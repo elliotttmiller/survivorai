@@ -71,6 +71,9 @@ htmlcov/
 .ipynb_checkpoints/
 *.ipynb
 
+# Exception: Include the main Colab notebook
+!SurvivorAI_Colab_Notebook.ipynb
+
 # Temporary files
 tmp/
 temp/
