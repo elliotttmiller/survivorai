@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+
+# Cache
+cache/
+*.cache
+
+# ML Models
+models/
+*.pkl
+*.h5
+*.pb
+*.ckpt
+*.pth
+
+# Data
+data/
+*.csv
+*.json
+*.parquet
+
+# Logs
+*.log
+logs/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Exception: Include the main Colab notebook
+!SurvivorAI_Colab_Notebook.ipynb
+
+# Temporary files
+tmp/
+temp/
+*.tmp
