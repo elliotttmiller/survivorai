@@ -5,20 +5,44 @@ import config
 from data_collection.odds_api import OddsAPIClient
 from data_collection.survivorgrid_scraper import SurvivorGridScraper
 
+# Try to import ML predictor
+try:
+    from ml_models.ml_predictor import MLNFLPredictor
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    print("ML models not available. Install ML dependencies or disable ML predictions.")
+
 
 class DataManager:
     """Manages data collection and integration from multiple sources."""
 
-    def __init__(self, use_odds_api: bool = True):
+    def __init__(self, use_odds_api: bool = True, use_ml_predictions: bool = False):
         """
         Initialize data manager.
 
         Args:
             use_odds_api: Whether to use The Odds API (requires API key)
+            use_ml_predictions: Whether to enhance predictions with ML models
         """
         self.use_odds_api = use_odds_api
+        self.use_ml_predictions = use_ml_predictions and ML_AVAILABLE
         self.odds_client = OddsAPIClient() if use_odds_api else None
         self.sg_scraper = SurvivorGridScraper()
+        
+        # Initialize ML predictor if requested and available
+        if self.use_ml_predictions:
+            try:
+                self.ml_predictor = MLNFLPredictor(
+                    model_type=config.ML_MODEL_TYPE
+                )
+                print(f"✓ ML predictor initialized ({config.ML_MODEL_TYPE})")
+            except Exception as e:
+                print(f"Warning: Could not initialize ML predictor: {e}")
+                self.use_ml_predictions = False
+                self.ml_predictor = None
+        else:
+            self.ml_predictor = None
 
     def get_comprehensive_data(self, current_week: Optional[int] = None) -> pd.DataFrame:
         """
@@ -51,6 +75,15 @@ class DataManager:
 
         # Merge the data sources
         combined_data = self._merge_data_sources(sg_data, odds_data, current_week)
+        
+        # Enhance with ML predictions if enabled
+        if self.use_ml_predictions and self.ml_predictor is not None and not combined_data.empty:
+            try:
+                print("Enhancing predictions with ML models...")
+                combined_data = self.ml_predictor.enhance_data_manager_predictions(combined_data)
+                print("✓ ML enhancement complete")
+            except Exception as e:
+                print(f"Warning: Could not apply ML predictions: {e}")
 
         return combined_data
 

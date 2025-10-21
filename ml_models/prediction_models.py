@@ -273,49 +273,50 @@ class NeuralNetworkPredictor(BasePredictor):
         )
 
 
-class XGBoostPredictor(BasePredictor):
-    """
-    XGBoost predictor.
-    
-    Gradient boosting for:
-    - Fast training and prediction
-    - Handles missing values
-    - Built-in regularization
-    - Excellent performance on tabular data
-    """
-    
-    def __init__(
-        self, 
-        n_estimators: int = 100,
-        learning_rate: float = 0.1,
-        max_depth: int = 6
-    ):
+if XGBOOST_AVAILABLE:
+    class XGBoostPredictor(BasePredictor):
         """
-        Initialize XGBoost predictor.
+        XGBoost predictor.
         
-        Args:
-            n_estimators: Number of boosting rounds
-            learning_rate: Boosting learning rate
-            max_depth: Maximum tree depth
+        Gradient boosting for:
+        - Fast training and prediction
+        - Handles missing values
+        - Built-in regularization
+        - Excellent performance on tabular data
         """
-        super().__init__("XGBoost")
-        self.n_estimators = n_estimators
-        self.learning_rate = learning_rate
-        self.max_depth = max_depth
         
-        if not XGBOOST_AVAILABLE:
-            raise ImportError("XGBoost is not installed")
-    
-    def build_model(self) -> xgb.XGBRegressor:
-        """Build XGBoost model."""
-        return xgb.XGBRegressor(
-            n_estimators=self.n_estimators,
-            learning_rate=self.learning_rate,
-            max_depth=self.max_depth,
-            random_state=42,
-            n_jobs=-1,
-            objective='reg:squarederror',
-        )
+        def __init__(
+            self, 
+            n_estimators: int = 100,
+            learning_rate: float = 0.1,
+            max_depth: int = 6
+        ):
+            """
+            Initialize XGBoost predictor.
+            
+            Args:
+                n_estimators: Number of boosting rounds
+                learning_rate: Boosting learning rate
+                max_depth: Maximum tree depth
+            """
+            super().__init__("XGBoost")
+            self.n_estimators = n_estimators
+            self.learning_rate = learning_rate
+            self.max_depth = max_depth
+        
+        def build_model(self) -> xgb.XGBRegressor:
+            """Build XGBoost model."""
+            return xgb.XGBRegressor(
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                max_depth=self.max_depth,
+                random_state=42,
+                n_jobs=-1,
+                objective='reg:squarederror',
+            )
+else:
+    # Placeholder when XGBoost not available
+    XGBoostPredictor = None
 
 
 class EnsemblePredictor:
@@ -343,7 +344,7 @@ class EnsemblePredictor:
         self.rf_model = RandomForestPredictor(n_estimators=100)
         self.nn_model = NeuralNetworkPredictor(hidden_layers=(100, 50, 25))
         
-        if XGBOOST_AVAILABLE:
+        if XGBOOST_AVAILABLE and XGBoostPredictor is not None:
             self.xgb_model = XGBoostPredictor(n_estimators=100)
         else:
             self.xgb_model = None
