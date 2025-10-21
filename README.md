@@ -2,11 +2,54 @@
 
 An advanced, ML-powered NFL Survivor Pool optimizer that combines cutting-edge machine learning prediction models with sophisticated optimization algorithms. Built on research from leading sports analytics papers and enhanced with professional-grade features.
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/elliotttmiller/survivorai/blob/main/SurvivorAI_Colab_Notebook.ipynb)
+
+**🚀 NEW: [Google Colab Notebook](SurvivorAI_Colab_Notebook.ipynb)** - Run the complete system in your browser with zero setup! See [Colab Guide](COLAB_GUIDE.md) for details.
+
+---
+
 **Based on**: [jlattanzi4/nfl-survivor-optimizer](https://github.com/jlattanzi4/nfl-survivor-optimizer)
 
 **Enhanced with research from**:
 - [Frontiers in Sports: NFL Win Prediction with ML](https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2025.1638446/full)
 - Real-time NFL prediction algorithms and advanced statistical methods
+
+---
+
+## 🎯 Quick Start Options
+
+### Option 1: Google Colab (Recommended for Most Users)
+
+**Zero setup, runs in browser, completely automated!**
+
+1. Click the "Open in Colab" badge above
+2. Click `Runtime` → `Run all`
+3. Enter your pool info when prompted
+4. Get optimized recommendations!
+
+**Features:**
+- ✅ No installation required
+- ✅ Auto-detects current NFL week
+- ✅ Real-time data integration
+- ✅ Complete ML pipeline
+- ✅ One-click execution
+
+See [Colab Guide](COLAB_GUIDE.md) for detailed instructions.
+
+### Option 2: Local Installation
+
+For advanced users who want full control:
+
+```bash
+git clone https://github.com/elliotttmiller/survivorai.git
+cd survivorai
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+See [Setup Guide](SETUP.md) for detailed installation instructions.
+
+---
 
 ## Overview
 
@@ -46,10 +89,19 @@ NFL Survivor Pools require you to pick one team to win each week, but you can on
 - **Multi-Source Blending** - Best of both worlds
 
 ### User Experience
+- **Google Colab Notebook** - Zero-setup, browser-based automation (NEW!)
 - **Interactive Streamlit UI** - Beautiful, responsive interface
 - **Week-by-Week Selection** - Smart filtering and validation
 - **Complete Season Paths** - Full week 1-18 optimal strategy
 - **Visual Analytics** - Charts, metrics, and insights
+- **Auto Season Detection** - Automatically detects current NFL week
+
+### Automation & Deployment
+- **Fully Automated Workflow** - One-click execution in Colab
+- **Real-Time Updates** - Auto-detects current season and week
+- **Cloud Ready** - Runs in Google Colab or local environment
+- **Export Options** - CSV download for tracking
+- **API Integration** - Seamless connection to data sources
 
 ## How It Works
 
