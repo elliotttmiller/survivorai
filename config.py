@@ -4,6 +4,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Auto-detect season if not explicitly set
+def _get_current_season_week():
+    """Auto-detect current NFL season and week."""
+    try:
+        from utils.season_detector import NFLSeasonDetector
+        detector = NFLSeasonDetector()
+        season, week = detector.get_season_info()
+        return season, week
+    except:
+        # Fallback if detector not available
+        from datetime import datetime
+        current_date = datetime.now()
+        year = current_date.year
+        # Simple estimation
+        if current_date.month <= 2:
+            return year - 1, 18
+        elif current_date.month >= 9:
+            week = ((current_date - datetime(year, 9, 1)).days // 7) + 1
+            return year, min(18, max(1, week))
+        else:
+            return year, 1
+
+_detected_season, _detected_week = _get_current_season_week()
+
 # API Configuration
 ODDS_API_KEY = os.getenv('ODDS_API_KEY', '')
 ODDS_API_BASE_URL = 'https://api.the-odds-api.com/v4'
@@ -35,9 +59,9 @@ TEAM_ABBREV_MAP = {
     'TEN': 'Tennessee Titans', 'WAS': 'Washington Commanders'
 }
 
-# Season Configuration
-CURRENT_SEASON = int(os.getenv('CURRENT_SEASON', 2025))
-CURRENT_WEEK = int(os.getenv('CURRENT_WEEK', 7))
+# Season Configuration (Auto-detected if not set)
+CURRENT_SEASON = int(os.getenv('CURRENT_SEASON', _detected_season))
+CURRENT_WEEK = int(os.getenv('CURRENT_WEEK', _detected_week))
 TOTAL_WEEKS = 18  # Regular season weeks
 
 # Data Sources
