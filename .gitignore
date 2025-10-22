@@ -82,3 +82,4 @@ temp/
 
 # CatBoost training artifacts
 catboost_info/
+*.backup
