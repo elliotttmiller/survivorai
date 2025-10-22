@@ -78,3 +78,6 @@ htmlcov/
 tmp/
 temp/
 *.tmp
+
+# CatBoost training artifacts
+catboost_info/
