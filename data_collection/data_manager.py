@@ -4,6 +4,8 @@ from typing import List, Optional
 import config
 from data_collection.odds_api import OddsAPIClient
 from data_collection.survivorgrid_scraper import SurvivorGridScraper
+from data_collection.schedule_data import generate_schedule_based_data
+from data_collection.advanced_data_sources import integrate_all_data_sources
 
 # Try to import ML predictor
 try:
@@ -17,17 +19,36 @@ except ImportError:
 class DataManager:
     """Manages data collection and integration from multiple sources."""
 
-    def __init__(self, use_odds_api: bool = True, use_ml_predictions: bool = False):
+    def __init__(
+        self, 
+        use_odds_api: bool = True, 
+        use_ml_predictions: bool = False,
+        use_advanced_metrics: bool = True,
+        use_historical_data: bool = True
+    ):
         """
-        Initialize data manager.
+        Initialize data manager with comprehensive data sources.
 
         Args:
             use_odds_api: Whether to use The Odds API (requires API key)
             use_ml_predictions: Whether to enhance predictions with ML models
+            use_advanced_metrics: Whether to calculate advanced metrics (Elo, etc.)
+            use_historical_data: Whether to include historical statistics
         """
         self.use_odds_api = use_odds_api
         self.use_ml_predictions = use_ml_predictions and ML_AVAILABLE
-        self.odds_client = OddsAPIClient() if use_odds_api else None
+        self.use_advanced_metrics = use_advanced_metrics
+        self.use_historical_data = use_historical_data
+        
+        # Initialize data source clients
+        self.odds_client = None
+        if use_odds_api and config.ODDS_API_KEY:
+            try:
+                self.odds_client = OddsAPIClient()
+                print(f"✓ The Odds API connected")
+            except Exception as e:
+                print(f"Warning: Could not initialize Odds API: {e}")
+        
         self.sg_scraper = SurvivorGridScraper()
         
         # Initialize ML predictor if requested and available
@@ -43,6 +64,13 @@ class DataManager:
                 self.ml_predictor = None
         else:
             self.ml_predictor = None
+        
+        print(f"✓ Data sources initialized:")
+        print(f"   • SurvivorGrid: Enabled")
+        print(f"   • The Odds API: {'Enabled' if self.odds_client else 'Disabled (no API key)'}")
+        print(f"   • ML Predictions: {'Enabled' if self.use_ml_predictions else 'Disabled'}")
+        print(f"   • Advanced Metrics: {'Enabled' if self.use_advanced_metrics else 'Disabled'}")
+        print(f"   • Historical Data: {'Enabled' if self.use_historical_data else 'Disabled'}")
 
     def get_comprehensive_data(self, current_week: Optional[int] = None) -> pd.DataFrame:
         """
@@ -95,10 +123,44 @@ class DataManager:
         # Merge the data sources
         combined_data = self._merge_data_sources(sg_data, odds_data, current_week)
         
-        # Enhance with ML predictions if enabled
+        # If we have very limited data, supplement with schedule-based projections
+        if combined_data.empty or len(combined_data) < 32:
+            print("⚠️  Limited data from primary sources, adding schedule-based projections...")
+            schedule_data = generate_schedule_based_data(current_week, 18)
+            if combined_data.empty:
+                combined_data = schedule_data
+            else:
+                # Fill in missing weeks
+                existing_weeks = set(combined_data['week'].unique())
+                schedule_weeks = set(schedule_data['week'].unique())
+                missing_weeks = schedule_weeks - existing_weeks
+                if missing_weeks:
+                    missing_data = schedule_data[schedule_data['week'].isin(missing_weeks)]
+                    combined_data = pd.concat([combined_data, missing_data], ignore_index=True)
+        
+        # Enhance with advanced metrics and historical data
+        if (self.use_advanced_metrics or self.use_historical_data) and not combined_data.empty:
+            print("Enhancing with advanced metrics and historical data...")
+            combined_data = integrate_all_data_sources(
+                combined_data,
+                use_historical=self.use_historical_data,
+                use_advanced_metrics=self.use_advanced_metrics
+            )
+            
+            # Use enhanced probabilities if available
+            if 'enhanced_win_probability' in combined_data.columns:
+                combined_data['win_probability'] = combined_data['enhanced_win_probability']
+            
+            # Recalculate EV with enhanced probabilities
+            if 'pick_pct' in combined_data.columns:
+                combined_data['ev'] = combined_data['win_probability'] * (1 - combined_data['pick_pct'])
+            
+            print("✓ Advanced metrics applied")
+        
+        # Enhance with ML predictions if enabled (final layer)
         if self.use_ml_predictions and self.ml_predictor is not None and not combined_data.empty:
             try:
-                print("Enhancing predictions with ML models...")
+                print("Applying ML predictions (final enhancement)...")
                 combined_data = self.ml_predictor.enhance_data_manager_predictions(combined_data)
                 print("✓ ML enhancement complete")
             except Exception as e:

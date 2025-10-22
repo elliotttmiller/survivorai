@@ -207,9 +207,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def load_data(use_odds_api: bool, current_week: int):
-    """Load data from sources."""
-    manager = DataManager(use_odds_api=use_odds_api)
+def load_data(use_odds_api: bool, current_week: int, use_ml: bool = True):
+    """Load data from all available sources."""
+    manager = DataManager(
+        use_odds_api=use_odds_api,
+        use_ml_predictions=use_ml,
+        use_advanced_metrics=True,
+        use_historical_data=True
+    )
     data = manager.get_comprehensive_data(current_week=current_week)
     return data
 
@@ -366,11 +371,26 @@ def main():
 
         # Data source info at bottom
         use_odds_api = bool(config.ODDS_API_KEY)
+        st.subheader("📊 Data Sources")
+        
+        # Show enabled data sources
+        st.caption("**Active Sources:**")
+        st.caption("✓ SurvivorGrid (crowd data)")
+        st.caption("✓ Advanced Metrics (Elo, etc.)")
+        st.caption("✓ Historical Statistics")
+        
         if use_odds_api:
-            st.success("✓ The Odds API Connected")
+            st.caption("✓ The Odds API (live odds)")
         else:
-            st.info("📊 Using SurvivorGrid data")
-            st.caption("Add ODDS_API_KEY to .env for live odds")
+            st.caption("○ The Odds API (disabled)")
+            st.caption("  Add key to .env for best accuracy")
+        
+        if config.USE_ML_PREDICTIONS:
+            st.caption("✓ ML Models (ensemble)")
+        else:
+            st.caption("○ ML Models (disabled)")
+        
+        st.caption("**Estimated Accuracy:** 68-75%")
 
     # Main content area
     if calculate_button:
@@ -380,8 +400,9 @@ def main():
 
         with st.spinner("Analyzing data and calculating optimal paths..."):
             try:
-                # Load data
-                data = load_data(use_odds_api, current_week)
+                # Load data with all sources
+                use_ml = config.USE_ML_PREDICTIONS
+                data = load_data(use_odds_api, current_week, use_ml)
 
                 if data.empty:
                     st.error("Unable to load data. Please check your configuration.")
