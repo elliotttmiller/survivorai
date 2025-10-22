@@ -34,6 +34,22 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     print("Warning: XGBoost not available. Install with: pip install xgboost")
 
+# LightGBM
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+    print("Warning: LightGBM not available. Install with: pip install lightgbm")
+
+# CatBoost
+try:
+    import catboost as cb
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
+    print("Warning: CatBoost not available. Install with: pip install catboost")
+
 
 class BasePredictor(ABC):
     """Base class for all prediction models."""
@@ -319,6 +335,110 @@ else:
     XGBoostPredictor = None
 
 
+if LIGHTGBM_AVAILABLE:
+    class LightGBMPredictor(BasePredictor):
+        """
+        LightGBM predictor.
+        
+        State-of-the-art gradient boosting optimized for:
+        - Speed: 5-10x faster than XGBoost
+        - Memory efficiency: Histogram-based algorithms
+        - Accuracy: Leaf-wise tree growth for better performance
+        - Large datasets: Handles millions of samples efficiently
+        
+        Based on research showing LightGBM's superiority for tabular data
+        and competitive sports analytics applications.
+        """
+        
+        def __init__(
+            self, 
+            n_estimators: int = 100,
+            learning_rate: float = 0.05,
+            num_leaves: int = 31,
+            max_depth: int = -1
+        ):
+            """
+            Initialize LightGBM predictor.
+            
+            Args:
+                n_estimators: Number of boosting rounds
+                learning_rate: Boosting learning rate
+                num_leaves: Maximum number of leaves per tree
+                max_depth: Maximum tree depth (-1 for unlimited)
+            """
+            super().__init__("LightGBM")
+            self.n_estimators = n_estimators
+            self.learning_rate = learning_rate
+            self.num_leaves = num_leaves
+            self.max_depth = max_depth
+        
+        def build_model(self) -> lgb.LGBMRegressor:
+            """Build LightGBM model."""
+            return lgb.LGBMRegressor(
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                num_leaves=self.num_leaves,
+                max_depth=self.max_depth,
+                random_state=42,
+                n_jobs=-1,
+                objective='regression',
+                metric='rmse',
+                verbosity=-1,  # Suppress warnings
+            )
+else:
+    # Placeholder when LightGBM not available
+    LightGBMPredictor = None
+
+
+if CATBOOST_AVAILABLE:
+    class CatBoostPredictor(BasePredictor):
+        """
+        CatBoost predictor.
+        
+        Advanced gradient boosting with:
+        - Best categorical feature handling (no preprocessing needed)
+        - Ordered boosting to reduce prediction shift
+        - Robust to overfitting with built-in regularization
+        - Minimal hyperparameter tuning required
+        
+        Research shows CatBoost excels with mixed feature types and
+        provides superior generalization on sports prediction tasks.
+        """
+        
+        def __init__(
+            self, 
+            iterations: int = 100,
+            learning_rate: float = 0.05,
+            depth: int = 6
+        ):
+            """
+            Initialize CatBoost predictor.
+            
+            Args:
+                iterations: Number of boosting iterations
+                learning_rate: Boosting learning rate
+                depth: Tree depth
+            """
+            super().__init__("CatBoost")
+            self.iterations = iterations
+            self.learning_rate = learning_rate
+            self.depth = depth
+        
+        def build_model(self) -> cb.CatBoostRegressor:
+            """Build CatBoost model."""
+            return cb.CatBoostRegressor(
+                iterations=self.iterations,
+                learning_rate=self.learning_rate,
+                depth=self.depth,
+                random_state=42,
+                verbose=False,  # Suppress training output
+                loss_function='RMSE',
+            )
+else:
+    # Placeholder when CatBoost not available
+    CatBoostPredictor = None
+
+
 class EnsemblePredictor:
     """
     Ensemble predictor combining multiple models.
@@ -328,7 +448,12 @@ class EnsemblePredictor:
     - Reduced variance
     - More robust predictions
     
-    Combines Random Forest, Neural Network, and XGBoost with weighted averaging.
+    Enhanced version includes 5 models:
+    - Random Forest: Robust, interpretable
+    - Neural Network: Complex patterns
+    - XGBoost: Fast gradient boosting
+    - LightGBM: Efficient, accurate (NEW)
+    - CatBoost: Best categorical handling (NEW)
     """
     
     def __init__(self, weights: Optional[Tuple[float, ...]] = None):
@@ -336,22 +461,54 @@ class EnsemblePredictor:
         Initialize ensemble predictor.
         
         Args:
-            weights: Weights for (RF, NN, XGB). If None, uses equal weights.
+            weights: Weights for (RF, NN, XGB, LGBM, CatBoost). If None, uses equal weights.
         """
-        self.weights = weights or (0.4, 0.3, 0.3)
-        
         # Initialize sub-models
         self.rf_model = RandomForestPredictor(n_estimators=100)
         self.nn_model = NeuralNetworkPredictor(hidden_layers=(100, 50, 25))
         
+        # Count available advanced models
+        available_models = 2  # RF and NN always available
+        
         if XGBOOST_AVAILABLE and XGBoostPredictor is not None:
             self.xgb_model = XGBoostPredictor(n_estimators=100)
+            available_models += 1
         else:
             self.xgb_model = None
-            # Adjust weights if XGBoost unavailable
-            self.weights = (0.6, 0.4, 0.0)
+        
+        if LIGHTGBM_AVAILABLE and LightGBMPredictor is not None:
+            self.lgbm_model = LightGBMPredictor(n_estimators=100)
+            available_models += 1
+        else:
+            self.lgbm_model = None
+        
+        if CATBOOST_AVAILABLE and CatBoostPredictor is not None:
+            self.catboost_model = CatBoostPredictor(iterations=100)
+            available_models += 1
+        else:
+            self.catboost_model = None
+        
+        # Set weights based on available models
+        if weights is not None:
+            self.weights = weights
+        else:
+            # Equal weights for all available models
+            equal_weight = 1.0 / available_models
+            self.weights = tuple([equal_weight] * available_models)
         
         self.is_trained = False
+        self.model_names = self._get_model_names()
+    
+    def _get_model_names(self) -> List[str]:
+        """Get list of available model names."""
+        names = ['RandomForest', 'NeuralNetwork']
+        if self.xgb_model is not None:
+            names.append('XGBoost')
+        if self.lgbm_model is not None:
+            names.append('LightGBM')
+        if self.catboost_model is not None:
+            names.append('CatBoost')
+        return names
     
     def train(
         self, 
@@ -381,12 +538,24 @@ class EnsemblePredictor:
             print("Training XGBoost...")
             xgb_metrics = self.xgb_model.train(X, y, validation_split)
         
+        lgbm_metrics = {}
+        if self.lgbm_model is not None:
+            print("Training LightGBM...")
+            lgbm_metrics = self.lgbm_model.train(X, y, validation_split)
+        
+        catboost_metrics = {}
+        if self.catboost_model is not None:
+            print("Training CatBoost...")
+            catboost_metrics = self.catboost_model.train(X, y, validation_split)
+        
         self.is_trained = True
         
         return {
             'random_forest': rf_metrics,
             'neural_network': nn_metrics,
             'xgboost': xgb_metrics,
+            'lightgbm': lgbm_metrics,
+            'catboost': catboost_metrics,
         }
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -402,25 +571,42 @@ class EnsemblePredictor:
         if not self.is_trained:
             raise ValueError("Ensemble models not trained yet")
         
-        # Get predictions from each model
-        rf_pred = self.rf_model.predict(X)
-        nn_pred = self.nn_model.predict(X)
+        # Collect predictions from all available models
+        predictions = []
+        active_weights = []
         
+        # Always available
+        predictions.append(self.rf_model.predict(X))
+        active_weights.append(self.weights[0])
+        
+        predictions.append(self.nn_model.predict(X))
+        active_weights.append(self.weights[1])
+        
+        # Optional models
+        weight_idx = 2
         if self.xgb_model is not None:
-            xgb_pred = self.xgb_model.predict(X)
-            # Weighted average
-            ensemble_pred = (
-                self.weights[0] * rf_pred +
-                self.weights[1] * nn_pred +
-                self.weights[2] * xgb_pred
-            )
-        else:
-            # Only RF and NN
-            total_weight = self.weights[0] + self.weights[1]
-            ensemble_pred = (
-                (self.weights[0] / total_weight) * rf_pred +
-                (self.weights[1] / total_weight) * nn_pred
-            )
+            predictions.append(self.xgb_model.predict(X))
+            active_weights.append(self.weights[weight_idx])
+            weight_idx += 1
+        
+        if self.lgbm_model is not None:
+            predictions.append(self.lgbm_model.predict(X))
+            active_weights.append(self.weights[weight_idx])
+            weight_idx += 1
+        
+        if self.catboost_model is not None:
+            predictions.append(self.catboost_model.predict(X))
+            active_weights.append(self.weights[weight_idx])
+            weight_idx += 1
+        
+        # Normalize weights to sum to 1
+        total_weight = sum(active_weights)
+        normalized_weights = [w / total_weight for w in active_weights]
+        
+        # Weighted average
+        ensemble_pred = sum(
+            w * pred for w, pred in zip(normalized_weights, predictions)
+        )
         
         # Ensure probabilities in [0, 1]
         ensemble_pred = np.clip(ensemble_pred, 0.0, 1.0)
@@ -446,10 +632,17 @@ class EnsemblePredictor:
         if self.xgb_model is not None:
             success &= self.xgb_model.save(os.path.join(directory, 'xgb_model.pkl'))
         
+        if self.lgbm_model is not None:
+            success &= self.lgbm_model.save(os.path.join(directory, 'lgbm_model.pkl'))
+        
+        if self.catboost_model is not None:
+            success &= self.catboost_model.save(os.path.join(directory, 'catboost_model.pkl'))
+        
         # Save ensemble metadata
         metadata = {
             'weights': self.weights,
             'is_trained': self.is_trained,
+            'model_names': self.model_names,
         }
         joblib.dump(metadata, os.path.join(directory, 'ensemble_meta.pkl'))
         
@@ -474,10 +667,22 @@ class EnsemblePredictor:
             ):
                 self.xgb_model.load(os.path.join(directory, 'xgb_model.pkl'))
             
+            if self.lgbm_model is not None and os.path.exists(
+                os.path.join(directory, 'lgbm_model.pkl')
+            ):
+                self.lgbm_model.load(os.path.join(directory, 'lgbm_model.pkl'))
+            
+            if self.catboost_model is not None and os.path.exists(
+                os.path.join(directory, 'catboost_model.pkl')
+            ):
+                self.catboost_model.load(os.path.join(directory, 'catboost_model.pkl'))
+            
             # Load ensemble metadata
             metadata = joblib.load(os.path.join(directory, 'ensemble_meta.pkl'))
             self.weights = metadata['weights']
             self.is_trained = metadata['is_trained']
+            if 'model_names' in metadata:
+                self.model_names = metadata['model_names']
             
             return True
         except Exception as e:
