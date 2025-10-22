@@ -51,32 +51,37 @@ class DataManager:
         Strategy:
         - Use The Odds API for current week and next 1-2 weeks (more accurate)
         - Use SurvivorGrid for all weeks including future weeks
-        - Auto-adjust current_week if data not available (week may be completed)
+        - Auto-detect current_week from SurvivorGrid's earliest available week
 
         Args:
-            current_week: Current NFL week (defaults to config)
+            current_week: Current NFL week (defaults to auto-detect from SurvivorGrid)
 
         Returns:
             DataFrame with columns: week, team, win_probability, pick_pct, ev, opponent
         """
-        current_week = current_week or config.CURRENT_WEEK
-
         # Get SurvivorGrid data for all weeks (primary source)
         print("Fetching data from SurvivorGrid...")
-        sg_data = self.sg_scraper.get_all_weeks_data(current_week=current_week)
+        # Pass None to get all available weeks without filtering
+        sg_data = self.sg_scraper.get_all_weeks_data(current_week=None)
         
-        # Check if we have data for the requested current_week
-        # If not, SurvivorGrid may have already removed it (games completed)
+        # Auto-detect current week from SurvivorGrid's earliest available week
         if not sg_data.empty:
             available_weeks = sorted(sg_data['week'].unique())
-            if current_week not in available_weeks and available_weeks:
-                min_week = min(available_weeks)
-                if min_week > current_week:
-                    print(f"⚠️  Note: Week {current_week} data not available (games likely completed).")
-                    print(f"   Adjusting to earliest available week: {min_week}")
-                    # Update the config for the session
-                    config.CURRENT_WEEK = min_week
-                    current_week = min_week
+            detected_week = min(available_weeks)
+            
+            if current_week is None:
+                current_week = detected_week
+                print(f"✓ Auto-detected current week: {current_week} (from SurvivorGrid)")
+            elif current_week != detected_week:
+                print(f"⚠️  Note: Requested week {current_week}, but SurvivorGrid shows week {detected_week}")
+                print(f"   Using SurvivorGrid's earliest available week: {detected_week}")
+                current_week = detected_week
+            
+            # Update config for the session
+            config.CURRENT_WEEK = current_week
+        else:
+            # Fallback to provided week or config
+            current_week = current_week or config.CURRENT_WEEK
 
         # Get The Odds API data for current week (more accurate for near-term)
         odds_data = pd.DataFrame()

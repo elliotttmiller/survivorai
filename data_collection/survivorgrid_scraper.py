@@ -120,12 +120,11 @@ class SurvivorGridScraper:
         Scrape the main grid data from SurvivorGrid.
 
         Args:
-            current_week: Current week to start from (defaults to config.CURRENT_WEEK)
+            current_week: Current week to start from (None = get all available weeks)
 
         Returns:
             DataFrame with columns: week, team, opponent, win_pct, pick_pct, spread, ev
         """
-        current_week = current_week or config.CURRENT_WEEK
         soup = self.fetch_page()
 
         if not soup:
@@ -153,12 +152,12 @@ class SurvivorGridScraper:
             header_row = rows[0]
             headers = [th.get_text(strip=True) for th in header_row.find_all(['th', 'td'])]
 
-            # Find week column indices - only include current week and future weeks
+            # Find week column indices - include all weeks if current_week is None
             week_columns = {}
             for i, header in enumerate(headers):
                 if header.isdigit():
                     week_num = int(header)
-                    if week_num >= current_week:
+                    if current_week is None or week_num >= current_week:
                         week_columns[week_num] = i
 
             # Find index of key columns
@@ -170,8 +169,11 @@ class SurvivorGridScraper:
             print(f"Found {len(week_columns)} week columns: {sorted(week_columns.keys())}")
             
             if not week_columns:
-                print(f"⚠️  Warning: No weeks >= {current_week} found on SurvivorGrid")
-                print(f"   This may indicate that week {current_week} games are completed.")
+                if current_week is not None:
+                    print(f"⚠️  Warning: No weeks >= {current_week} found on SurvivorGrid")
+                    print(f"   This may indicate that week {current_week} games are completed.")
+                else:
+                    print(f"⚠️  Warning: No week columns found on SurvivorGrid")
                 return pd.DataFrame()
 
             # Parse data rows
@@ -276,7 +278,7 @@ class SurvivorGridScraper:
         Get data for all remaining weeks in the season.
 
         Args:
-            current_week: Current week to start from (defaults to config.CURRENT_WEEK)
+            current_week: Current week to start from (None = get all available weeks)
 
         Returns:
             DataFrame with win probabilities for all teams and weeks

@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import sys
 import os
+import json
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,185 +22,186 @@ st.set_page_config(
 )
 
 
-# Custom CSS for professional styling with NFL-inspired theme
+# Custom CSS for ChatGPT-like modern grey theme
 st.markdown("""
 <style>
-    /* Hide Streamlit branding and style top toolbar */
+    /* ChatGPT-inspired grey theme */
+    :root {
+        --bg-primary: #212121;
+        --bg-secondary: #2f2f2f;
+        --bg-tertiary: #3f3f3f;
+        --text-primary: #ececec;
+        --text-secondary: #b4b4b4;
+        --accent-primary: #10a37f;
+        --accent-hover: #0d8c6d;
+        --border-color: #4f4f4f;
+    }
+    
+    /* Hide Streamlit branding */
     header[data-testid="stHeader"] {
-        background: linear-gradient(135deg, #0a1628 0%, #1a2f4a 100%);
+        background: var(--bg-primary);
     }
-
-    /* Make Deploy button text white */
-    header[data-testid="stHeader"] button {
-        color: white !important;
-    }
-
-    /* Hide hamburger menu and other toolbar items */
+    
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-
-    /* Main background with subtle gradient */
+    
+    /* Main background */
     .main {
-        background: linear-gradient(135deg, #0a1628 0%, #1a2f4a 100%);
+        background: var(--bg-primary);
     }
-
+    
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1e3a5f 0%, #0f2744 100%);
+        background: var(--bg-secondary);
     }
-
+    
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
     section[data-testid="stSidebar"] h3,
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] p {
-        color: #e8f4f8 !important;
+        color: var(--text-primary) !important;
     }
-
+    
     /* Main headers */
     .main-header {
         font-size: 2.5rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #00d4ff 0%, #0099ff 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-weight: 600;
+        color: var(--text-primary);
         margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
     }
+    
     .sub-header {
-        font-size: 1.1rem;
-        color: #a0c4d9;
+        font-size: 1rem;
+        color: var(--text-secondary);
         margin-bottom: 2rem;
+        font-weight: 400;
     }
-
+    
     /* Content area text */
     .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
-        color: #e8f4f8 !important;
+        color: var(--text-primary) !important;
     }
-
+    
     .main p, .main li, .main label {
-        color: #c7dae8 !important;
+        color: var(--text-secondary) !important;
     }
-
+    
     /* Metrics styling */
     [data-testid="stMetricValue"] {
-        color: #00d4ff !important;
+        color: var(--text-primary) !important;
         font-weight: 600;
     }
-
+    
     [data-testid="stMetricLabel"] {
-        color: #a0c4d9 !important;
+        color: var(--text-secondary) !important;
     }
-
-    /* Expander styling with border and larger font - using aggressive selectors */
+    
+    /* Expander styling */
     div[data-testid="stExpander"] details {
-        background: linear-gradient(90deg, #1e3a5f 0%, #2a4a6f 100%) !important;
-        border-radius: 8px !important;
-        border: 2px solid rgba(16, 185, 129, 0.6) !important;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+        background: var(--bg-secondary) !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--border-color) !important;
         margin-bottom: 1rem !important;
+        transition: all 0.2s ease;
     }
-
+    
     div[data-testid="stExpander"] details summary {
-        color: #00d4ff !important;
-        font-weight: 700 !important;
-        font-size: 1.3rem !important;
-        padding: 0.75rem 1rem !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        padding: 1rem !important;
     }
-
+    
     div[data-testid="stExpander"] details summary p {
-        color: #00d4ff !important;
-        font-weight: 700 !important;
-        font-size: 1.3rem !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
         margin: 0 !important;
     }
-
+    
     div[data-testid="stExpander"] details:hover {
-        background: linear-gradient(90deg, #2a4a6f 0%, #3a5a7f 100%) !important;
-        border-color: rgba(16, 185, 129, 1) !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5) !important;
+        background: var(--bg-tertiary) !important;
+        border-color: var(--accent-primary) !important;
     }
-
-    /* Expander content background */
+    
     div[data-testid="stExpander"] details[open] {
-        background-color: rgba(26, 47, 74, 0.6) !important;
-        border: 2px solid rgba(0, 212, 255, 0.5) !important;
-        border-radius: 8px !important;
+        background: var(--bg-tertiary) !important;
+        border-color: var(--accent-primary) !important;
     }
-
+    
     div[data-testid="stExpander"] div[class*="streamlit-expanderContent"] {
-        background-color: rgba(26, 47, 74, 0.6) !important;
-        border-top: 1px solid rgba(0, 212, 255, 0.3) !important;
+        background: transparent !important;
+        border-top: 1px solid var(--border-color) !important;
     }
-
-    /* Dataframe styling with alternating row colors - using aggressive selectors */
+    
+    /* Dataframe styling */
     div[data-testid="stDataFrame"] {
         font-size: 0.9rem !important;
     }
-
-    /* Target the actual table elements for zebra striping */
+    
     div[data-testid="stDataFrame"] table tbody tr:nth-child(odd) td {
-        background-color: rgba(30, 58, 95, 0.4) !important;
+        background-color: var(--bg-secondary) !important;
     }
-
+    
     div[data-testid="stDataFrame"] table tbody tr:nth-child(even) td {
-        background-color: rgba(42, 74, 111, 0.4) !important;
+        background-color: var(--bg-tertiary) !important;
     }
-
+    
     div[data-testid="stDataFrame"] table tbody tr:hover td {
-        background-color: rgba(0, 212, 255, 0.2) !important;
+        background-color: rgba(16, 163, 127, 0.1) !important;
     }
-
-    /* Table cell styling */
+    
     div[data-testid="stDataFrame"] table td,
     div[data-testid="stDataFrame"] table th {
-        border-color: rgba(0, 212, 255, 0.2) !important;
-        padding: 0.5rem !important;
+        border-color: var(--border-color) !important;
+        padding: 0.75rem !important;
+        color: var(--text-primary) !important;
     }
-
-    /* Table header styling */
+    
     div[data-testid="stDataFrame"] table thead tr th {
-        background-color: rgba(30, 58, 95, 0.6) !important;
-        color: #00d4ff !important;
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
         font-weight: 600 !important;
     }
-
+    
     /* Button styling */
     .stButton > button {
-        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        background: var(--accent-primary);
         color: white;
-        font-weight: 600;
+        font-weight: 500;
         border: none;
         border-radius: 8px;
         padding: 0.5rem 1rem;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
     }
-
+    
     .stButton > button:hover {
-        background: linear-gradient(90deg, #34d399 0%, #10b981 100%);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
-        transform: translateY(-2px);
+        background: var(--accent-hover);
+        transform: translateY(-1px);
     }
-
+    
     /* Info/Success/Warning boxes */
     .stAlert {
-        background-color: rgba(30, 58, 95, 0.8);
+        background-color: var(--bg-secondary);
         border-radius: 8px;
-        border-left: 4px solid #00d4ff;
-        color: #e8f4f8;
+        border-left: 3px solid var(--accent-primary);
+        color: var(--text-primary);
     }
-
-    /* Tighter spacing for sidebar selectboxes */
-    section[data-testid="stSidebar"] .stSelectbox {
-        margin-bottom: -0.5rem;
+    
+    /* Input styling */
+    div[data-baseweb="input"] input,
+    div[data-baseweb="select"] {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
     }
-    section[data-testid="stSidebar"] label {
-        font-size: 0.85rem;
-        margin-bottom: 0.1rem;
-    }
-
+    
     /* Divider styling */
     hr {
-        border-color: rgba(0, 212, 255, 0.3);
+        border-color: var(--border-color);
+        opacity: 0.3;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -210,6 +212,35 @@ def load_data(use_odds_api: bool, current_week: int):
     manager = DataManager(use_odds_api=use_odds_api)
     data = manager.get_comprehensive_data(current_week=current_week)
     return data
+
+
+def load_used_teams():
+    """Load used teams from JSON file."""
+    used_teams_file = 'used_teams.json'
+    if os.path.exists(used_teams_file):
+        try:
+            with open(used_teams_file, 'r') as f:
+                data = json.load(f)
+            # Convert week numbers to int and return as dict
+            return {int(k): v for k, v in data.items()}
+        except Exception as e:
+            st.warning(f"Could not load used_teams.json: {e}")
+            return {}
+    return {}
+
+
+def save_used_teams(weekly_picks):
+    """Save used teams to JSON file."""
+    used_teams_file = 'used_teams.json'
+    try:
+        # Filter out 'None' selections
+        data = {str(week): team for week, team in weekly_picks.items() if team != 'None'}
+        with open(used_teams_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"Could not save used_teams.json: {e}")
+        return False
 
 
 def spread_to_moneyline(spread: float, win_prob: float) -> int:
@@ -253,12 +284,15 @@ def format_line(row):
 def main():
     """Main Streamlit app."""
     # Header
-    st.markdown('<div class="main-header">NFL Survivor Pool Optimizer</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Strategic pick recommendations using advanced optimization algorithms</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🏈 NFL Survivor Pool Optimizer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">AI-powered strategic recommendations for optimal team selection</div>', unsafe_allow_html=True)
+
+    # Load used teams from file
+    saved_picks = load_used_teams()
 
     # Sidebar configuration
     with st.sidebar:
-        st.header("Configuration")
+        st.header("⚙️ Configuration")
 
         # Pool settings
         st.subheader("Pool Settings")
@@ -276,18 +310,19 @@ def main():
             min_value=1,
             max_value=18,
             value=config.CURRENT_WEEK,
-            step=1
+            step=1,
+            help="Auto-detected from SurvivorGrid data"
         )
 
         st.divider()
 
         # Week-by-week team selection
-        st.subheader("Previous Picks")
+        st.subheader("📋 Previous Picks")
         st.caption("Select the team you picked for each week")
 
-        # Initialize session state for picks
+        # Initialize session state for picks with saved data
         if 'weekly_picks' not in st.session_state:
-            st.session_state.weekly_picks = {}
+            st.session_state.weekly_picks = saved_picks.copy()
 
         used_teams_list = []
         base_teams_options = ['None'] + config.NFL_TEAMS
@@ -319,17 +354,22 @@ def main():
 
         st.divider()
 
+        # Save button
+        if st.button("💾 Save Picks to File", use_container_width=True):
+            if save_used_teams(st.session_state.weekly_picks):
+                st.success("✓ Saved to used_teams.json")
+
         # Calculate button
-        calculate_button = st.button("Calculate Optimal Picks", type="primary", use_container_width=True)
+        calculate_button = st.button("🎯 Calculate Optimal Picks", type="primary", use_container_width=True)
 
         st.divider()
 
         # Data source info at bottom
         use_odds_api = bool(config.ODDS_API_KEY)
         if use_odds_api:
-            st.success("✓ Using The Odds API")
+            st.success("✓ The Odds API Connected")
         else:
-            st.info("Using placeholder data only")
+            st.info("📊 Using SurvivorGrid data")
             st.caption("Add ODDS_API_KEY to .env for live odds")
 
     # Main content area
