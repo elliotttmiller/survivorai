@@ -53,6 +53,7 @@ models/
 data/
 *.csv
 *.json
+!used_teams.json
 *.parquet
 
 # Logs
