@@ -53,6 +53,7 @@ models/
 data/
 *.csv
 *.json
+!used_teams.json
 *.parquet
 
 # Logs
@@ -78,3 +79,6 @@ htmlcov/
 tmp/
 temp/
 *.tmp
+
+# CatBoost training artifacts
+catboost_info/

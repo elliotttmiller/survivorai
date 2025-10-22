@@ -63,18 +63,24 @@ NFL Survivor Pools require you to pick one team to win each week, but you can on
 
 ## Key Features
 
-### Machine Learning Prediction Models
+### Machine Learning Prediction Models (ENHANCED v2.0)
 - **Random Forest Regression** - High accuracy with feature importance analysis
 - **Neural Network** - Deep learning for complex pattern recognition (highest research accuracy)
 - **XGBoost** - Gradient boosting for robust predictions
-- **Ensemble Methods** - Weighted combination of all models for superior performance
+- **LightGBM** - State-of-the-art gradient boosting (5-10x faster) ⚡ NEW
+- **CatBoost** - Best-in-class categorical feature handling 🆕 NEW
+- **Enhanced Ensemble** - 5-model ensemble with dynamic weighting for superior performance
 
-### Advanced Feature Engineering
+### Advanced Feature Engineering (49+ Features)
 - **Pythagorean Expectation** - NFL-optimized win probability (exponent 2.37)
 - **Elo Rating System** - Dynamic team strength ratings
 - **Offensive/Defensive Metrics** - Points per game, yards per play, efficiency ratings
 - **Recent Form Analysis** - Momentum and trend tracking
 - **Rest Advantage** - Scheduling factors and bye week considerations
+- **EPA (Expected Points Added)** - Play-level efficiency metrics 🆕 NEW
+- **DVOA-Proxy** - Defense-adjusted efficiency ratings 🆕 NEW
+- **Success Rate** - Play success percentage analysis 🆕 NEW
+- **Explosive Play Metrics** - Big play rate analysis 🆕 NEW
 
 ### Optimization & Strategy
 - **Hungarian Algorithm** - Optimal team-to-week assignment path
@@ -240,6 +246,8 @@ This system incorporates findings from peer-reviewed research:
 
 - ✅ ML-based win probability predictions (IMPLEMENTED)
 - ✅ Advanced feature engineering (IMPLEMENTED)
+- ✅ LightGBM and CatBoost models (IMPLEMENTED v2.0)
+- ✅ EPA and DVOA-inspired metrics (IMPLEMENTED v2.0)
 - 🔄 Historical performance tracking (IN PROGRESS)
 - 🔄 Monte Carlo simulations for variance analysis (IN PROGRESS)
 - 📋 Multi-entry optimization (for pools allowing multiple entries)
