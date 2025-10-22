@@ -51,6 +51,7 @@ class DataManager:
         Strategy:
         - Use The Odds API for current week and next 1-2 weeks (more accurate)
         - Use SurvivorGrid for all weeks including future weeks
+        - Auto-adjust current_week if data not available (week may be completed)
 
         Args:
             current_week: Current NFL week (defaults to config)
@@ -63,6 +64,19 @@ class DataManager:
         # Get SurvivorGrid data for all weeks (primary source)
         print("Fetching data from SurvivorGrid...")
         sg_data = self.sg_scraper.get_all_weeks_data(current_week=current_week)
+        
+        # Check if we have data for the requested current_week
+        # If not, SurvivorGrid may have already removed it (games completed)
+        if not sg_data.empty:
+            available_weeks = sorted(sg_data['week'].unique())
+            if current_week not in available_weeks and available_weeks:
+                min_week = min(available_weeks)
+                if min_week > current_week:
+                    print(f"⚠️  Note: Week {current_week} data not available (games likely completed).")
+                    print(f"   Adjusting to earliest available week: {min_week}")
+                    # Update the config for the session
+                    config.CURRENT_WEEK = min_week
+                    current_week = min_week
 
         # Get The Odds API data for current week (more accurate for near-term)
         odds_data = pd.DataFrame()

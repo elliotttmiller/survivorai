@@ -53,6 +53,9 @@ class NFLSeasonDetector:
         """
         Detect current NFL week based on date.
         
+        NFL weeks transition on Tuesday (after Monday Night Football).
+        This ensures we're looking at the upcoming week for picks.
+        
         Args:
             reference_date: Date to check (defaults to now)
             
@@ -78,6 +81,15 @@ class NFLSeasonDetector:
         # Calculate weeks since season start
         days_since_start = (reference_date - season_start).days
         week = (days_since_start // 7) + 1
+        
+        # NFL weeks transition on Tuesday (weekday 1) after Monday Night Football
+        # If we're on Tuesday or later in the week, we're in the planning phase for next week
+        weekday = reference_date.weekday()  # Monday=0, Tuesday=1, ..., Sunday=6
+        
+        # If it's Tuesday (1) or later through Monday (0), we're planning for the upcoming week
+        # Games are Thursday-Monday, so Tuesday is when we plan for next week
+        if weekday >= 1:  # Tuesday through Sunday
+            week += 1
         
         # Cap at week 18 (regular season)
         return min(18, max(1, week))

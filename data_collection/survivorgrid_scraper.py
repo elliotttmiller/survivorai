@@ -168,6 +168,11 @@ class SurvivorGridScraper:
             ev_idx = headers.index('EV▼') if 'EV▼' in headers else (headers.index('EV') if 'EV' in headers else 0)
 
             print(f"Found {len(week_columns)} week columns: {sorted(week_columns.keys())}")
+            
+            if not week_columns:
+                print(f"⚠️  Warning: No weeks >= {current_week} found on SurvivorGrid")
+                print(f"   This may indicate that week {current_week} games are completed.")
+                return pd.DataFrame()
 
             # Parse data rows
             for row in rows[1:]:
