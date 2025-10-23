@@ -565,7 +565,8 @@ def main():
                                     explanation['confidence']['level']
                                 ),
                                 use_container_width=True,
-                                config={'displayModeBar': False}
+                                config={'displayModeBar': False},
+                                key=f"confidence_gauge_{i}"
                             )
                             st.caption(explanation['confidence']['description'])
                         
@@ -577,7 +578,8 @@ def main():
                                     explanation['risk_assessment']['factors']
                                 ),
                                 use_container_width=True,
-                                config={'displayModeBar': False}
+                                config={'displayModeBar': False},
+                                key=f"risk_indicator_{i}"
                             )
                             st.caption(explanation['risk_assessment']['description'])
                         
@@ -599,7 +601,8 @@ def main():
                             st.plotly_chart(
                                 create_feature_contribution_chart(explanation['feature_contributions']),
                                 use_container_width=True,
-                                config={'displayModeBar': False}
+                                config={'displayModeBar': False},
+                                key=f"feature_contribution_{i}"
                             )
                             
                             # Show strengths and concerns
@@ -636,7 +639,8 @@ def main():
                             st.plotly_chart(
                                 create_ensemble_breakdown_chart(ensemble['model_breakdown']),
                                 use_container_width=True,
-                                config={'displayModeBar': False}
+                                config={'displayModeBar': False},
+                                key=f"ensemble_breakdown_{i}"
                             )
                             
                             # Model agreement details
@@ -661,7 +665,8 @@ def main():
                         st.plotly_chart(
                             create_weekly_path_chart(pick['full_path'], current_week),
                             use_container_width=True,
-                            config={'displayModeBar': False}
+                            config={'displayModeBar': False},
+                            key=f"weekly_path_{i}"
                         )
 
                         path_data = []
