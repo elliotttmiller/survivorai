@@ -7,6 +7,18 @@ from data_collection.survivorgrid_scraper import SurvivorGridScraper
 from data_collection.schedule_data import generate_schedule_based_data
 from data_collection.advanced_data_sources import integrate_all_data_sources
 
+# Import injury analysis components
+try:
+    from data_collection.injury_reports import (
+        InjuryReportCollector,
+        InjuryImpactAnalyzer,
+        enrich_game_data_with_injuries
+    )
+    INJURY_ANALYSIS_AVAILABLE = True
+except ImportError:
+    INJURY_ANALYSIS_AVAILABLE = False
+    print("Injury analysis not available. Install required dependencies.")
+
 # Try to import ML predictor
 try:
     from ml_models.ml_predictor import MLNFLPredictor
@@ -24,7 +36,8 @@ class DataManager:
         use_odds_api: bool = True, 
         use_ml_predictions: bool = False,
         use_advanced_metrics: bool = True,
-        use_historical_data: bool = True
+        use_historical_data: bool = True,
+        use_injury_analysis: bool = True
     ):
         """
         Initialize data manager with comprehensive data sources.
@@ -34,11 +47,13 @@ class DataManager:
             use_ml_predictions: Whether to enhance predictions with ML models
             use_advanced_metrics: Whether to calculate advanced metrics (Elo, etc.)
             use_historical_data: Whether to include historical statistics
+            use_injury_analysis: Whether to integrate injury impact analysis (default True)
         """
         self.use_odds_api = use_odds_api
         self.use_ml_predictions = use_ml_predictions and ML_AVAILABLE
         self.use_advanced_metrics = use_advanced_metrics
         self.use_historical_data = use_historical_data
+        self.use_injury_analysis = use_injury_analysis and INJURY_ANALYSIS_AVAILABLE
         
         # Initialize data source clients
         self.odds_client = None
@@ -50,6 +65,21 @@ class DataManager:
                 print(f"Warning: Could not initialize Odds API: {e}")
         
         self.sg_scraper = SurvivorGridScraper()
+        
+        # Initialize injury analysis components if enabled
+        if self.use_injury_analysis:
+            try:
+                self.injury_collector = InjuryReportCollector(cache_expiry_hours=4, use_fallback=True)
+                self.injury_analyzer = InjuryImpactAnalyzer()
+                print(f"✓ Injury analysis initialized")
+            except Exception as e:
+                print(f"Warning: Could not initialize injury analysis: {e}")
+                self.use_injury_analysis = False
+                self.injury_collector = None
+                self.injury_analyzer = None
+        else:
+            self.injury_collector = None
+            self.injury_analyzer = None
         
         # Initialize ML predictor if requested and available
         if self.use_ml_predictions:
@@ -71,6 +101,7 @@ class DataManager:
         print(f"   • ML Predictions: {'Enabled' if self.use_ml_predictions else 'Disabled'}")
         print(f"   • Advanced Metrics: {'Enabled' if self.use_advanced_metrics else 'Disabled'}")
         print(f"   • Historical Data: {'Enabled' if self.use_historical_data else 'Disabled'}")
+        print(f"   • Injury Analysis: {'Enabled' if self.use_injury_analysis else 'Disabled'}")
 
     def get_comprehensive_data(self, current_week: Optional[int] = None) -> pd.DataFrame:
         """
@@ -156,6 +187,28 @@ class DataManager:
                 combined_data['ev'] = combined_data['win_probability'] * (1 - combined_data['pick_pct'])
             
             print("✓ Advanced metrics applied")
+        
+        # Enhance with injury analysis if enabled (before ML predictions)
+        if self.use_injury_analysis and self.injury_collector and self.injury_analyzer and not combined_data.empty:
+            try:
+                print("Applying injury impact analysis...")
+                combined_data = enrich_game_data_with_injuries(
+                    combined_data,
+                    self.injury_collector,
+                    self.injury_analyzer
+                )
+                
+                # Apply injury adjustments to win probabilities
+                if 'injury_adjusted_win_probability' in combined_data.columns:
+                    combined_data['win_probability'] = combined_data['injury_adjusted_win_probability']
+                    
+                    # Recalculate EV with injury-adjusted probabilities
+                    if 'pick_pct' in combined_data.columns:
+                        combined_data['ev'] = combined_data['win_probability'] * (1 - combined_data['pick_pct'])
+                
+                print("✓ Injury analysis applied")
+            except Exception as e:
+                print(f"Warning: Could not apply injury analysis: {e}")
         
         # Enhance with ML predictions if enabled (final layer)
         if self.use_ml_predictions and self.ml_predictor is not None and not combined_data.empty:

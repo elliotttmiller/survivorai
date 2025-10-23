@@ -149,7 +149,7 @@ class ESPNInjuryScraper:
             List of injury dictionaries
         """
         try:
-            response = self.session.get(self.base_url, timeout=10)
+            response = self.session.get(self.base_url, timeout=5)  # Reduced timeout to fail faster
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -191,7 +191,7 @@ class ESPNInjuryScraper:
             return injuries
             
         except Exception as e:
-            print(f"Error scraping ESPN injuries: {e}")
+            # Fail silently - will use fallback data if needed
             return []
 
 
@@ -214,7 +214,7 @@ class CBSSportsInjuryScraper:
             List of injury dictionaries
         """
         try:
-            response = self.session.get(self.base_url, timeout=10)
+            response = self.session.get(self.base_url, timeout=5)  # Reduced timeout to fail faster
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -250,7 +250,7 @@ class CBSSportsInjuryScraper:
             return injuries
             
         except Exception as e:
-            print(f"Error scraping CBS Sports injuries: {e}")
+            # Fail silently - will use fallback data if needed
             return []
 
 
@@ -284,7 +284,7 @@ class TheHuddleInjuryScraper:
             
         try:
             # Use verify=False to bypass SSL certificate verification issues
-            response = self.session.get(self.base_url, timeout=10, verify=False)
+            response = self.session.get(self.base_url, timeout=5, verify=False)  # Reduced timeout to fail faster
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -549,15 +549,16 @@ class InjuryReportCollector:
         injuries = []
         
         try:
-            # Scrape ESPN
+            # Scrape ESPN (with short timeout to fail fast)
             espn_injuries = self.espn_scraper.scrape_injuries()
             team_injuries_espn = [inj for inj in espn_injuries if self._normalize_team_name(inj['team']) == self._normalize_team_name(team)]
             injuries.extend(team_injuries_espn)
             
-            # Add small delay to be respectful
-            time.sleep(0.5)
+            # Only add delay if we got results
+            if espn_injuries:
+                time.sleep(0.5)
             
-            # Scrape CBS Sports
+            # Scrape CBS Sports (with short timeout to fail fast)
             cbs_injuries = self.cbs_scraper.scrape_injuries()
             team_injuries_cbs = [inj for inj in cbs_injuries if self._normalize_team_name(inj['team']) == self._normalize_team_name(team)]
             
@@ -567,29 +568,31 @@ class InjuryReportCollector:
                 if cbs_inj['player_name'] not in espn_players:
                     injuries.append(cbs_inj)
             
-            # Add delay
-            time.sleep(0.5)
+            # Only add delay if we got results
+            if cbs_injuries:
+                time.sleep(0.5)
             
-            # Scrape The Huddle (fantasy football player news with injury analysis)
-            huddle_injuries = self.huddle_scraper.scrape_injuries()
-            team_injuries_huddle = [inj for inj in huddle_injuries if self._normalize_team_name(inj['team']) == self._normalize_team_name(team)]
-            
-            # Deduplicate but keep The Huddle's analysis if it adds value
-            all_players = espn_players + [inj['player_name'] for inj in team_injuries_cbs]
-            for huddle_inj in team_injuries_huddle:
-                if huddle_inj['player_name'] not in all_players:
-                    injuries.append(huddle_inj)
-                else:
-                    # If player already exists, enhance with The Huddle's analysis
-                    for existing_inj in injuries:
-                        if existing_inj['player_name'] == huddle_inj['player_name']:
-                            # Add analysis if available
-                            if 'analysis' in huddle_inj and huddle_inj['analysis']:
-                                existing_inj['analysis'] = huddle_inj['analysis']
-                            # Update injury type if The Huddle has more specific info
-                            if huddle_inj.get('injury_type', 'UNKNOWN') != 'UNKNOWN' and existing_inj.get('injury_type', 'UNKNOWN') == 'UNKNOWN':
-                                existing_inj['injury_type'] = huddle_inj['injury_type']
-                            break
+            # Scrape The Huddle only if it's available (fantasy football player news with injury analysis)
+            if self.huddle_scraper.is_available:
+                huddle_injuries = self.huddle_scraper.scrape_injuries()
+                team_injuries_huddle = [inj for inj in huddle_injuries if self._normalize_team_name(inj['team']) == self._normalize_team_name(team)]
+                
+                # Deduplicate but keep The Huddle's analysis if it adds value
+                all_players = espn_players + [inj['player_name'] for inj in team_injuries_cbs]
+                for huddle_inj in team_injuries_huddle:
+                    if huddle_inj['player_name'] not in all_players:
+                        injuries.append(huddle_inj)
+                    else:
+                        # If player already exists, enhance with The Huddle's analysis
+                        for existing_inj in injuries:
+                            if existing_inj['player_name'] == huddle_inj['player_name']:
+                                # Add analysis if available
+                                if 'analysis' in huddle_inj and huddle_inj['analysis']:
+                                    existing_inj['analysis'] = huddle_inj['analysis']
+                                # Update injury type if The Huddle has more specific info
+                                if huddle_inj.get('injury_type', 'UNKNOWN') != 'UNKNOWN' and existing_inj.get('injury_type', 'UNKNOWN') == 'UNKNOWN':
+                                    existing_inj['injury_type'] = huddle_inj['injury_type']
+                                break
             
         except Exception as e:
             print(f"Error fetching injury data for {team}: {e}")
