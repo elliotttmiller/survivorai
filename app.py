@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import os
 import json
+from typing import Dict
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
