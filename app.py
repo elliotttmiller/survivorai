@@ -396,6 +396,7 @@ def get_enhanced_explanation(pick: Dict, data: pd.DataFrame, explainer: ModelExp
 def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
     """
     Generate overall reasoning summary explaining why each pick is ranked as it is.
+    Provides comprehensive end-to-end comparative analysis across all picks.
     
     Args:
         picks: List of adjusted picks sorted by composite score
@@ -423,7 +424,7 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
     
     reasoning.append(f"These recommendations are optimized for a **{strategy_type}**.\n\n")
     
-    # Add overview section
+    # Add overview section with more detail
     reasoning.append("### 🎯 Ranking Overview\n")
     reasoning.append("Each pick is ranked using a **composite score** that considers:\n")
     reasoning.append("- **Overall Win-Out Probability**: Chance of surviving rest of season\n")
@@ -431,7 +432,37 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
     reasoning.append("- **This Week Win %**: Immediate safety vs upside\n")
     reasoning.append("- **Popularity**: Differentiation from the field\n\n")
     
-    # Compare each pick to the next
+    # Add landscape summary
+    reasoning.append("### 📈 Recommendation Landscape\n")
+    reasoning.append("Here's how all recommendations compare:\n\n")
+    
+    # Create comparison table
+    comparison_data = []
+    for i, pick in enumerate(picks, 1):
+        comparison_data.append({
+            'Rank': f"#{i}",
+            'Team': pick['recommended_team'],
+            'Score': f"{pick.get('composite_score', 0):.4f}",
+            'Win-Out': f"{pick['overall_win_probability']*100:.2f}%",
+            'This Week': f"{pick['win_probability_this_week']*100:.1f}%",
+            'Pop': f"{pick['pick_percentage_this_week']*100:.1f}%"
+        })
+    
+    # Format as a simple text table
+    reasoning.append("```")
+    reasoning.append("Rank | Team                    | Score   | Win-Out | This Week | Popularity")
+    reasoning.append("-----|-------------------------|---------|---------|-----------|----------")
+    for data in comparison_data:
+        reasoning.append(
+            f"{data['Rank']:<4} | {data['Team']:<23} | {data['Score']:<7} | "
+            f"{data['Win-Out']:<7} | {data['This Week']:<9} | {data['Pop']:<10}"
+        )
+    reasoning.append("```\n")
+    
+    # Detailed pick-by-pick analysis
+    reasoning.append("### 🔍 Detailed Pick Analysis\n")
+    
+    # Analyze each pick with comprehensive comparisons
     for i, pick in enumerate(picks, 1):
         team = pick['recommended_team']
         win_out = pick['overall_win_probability'] * 100
@@ -446,7 +477,57 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
         reasoning.append(f"**This Week:** {this_week:.1f}% | ")
         reasoning.append(f"**Popularity:** {popularity:.1f}%\n\n")
         
-        # Explain why this pick is ranked here
+        # Special handling for the 6th pick (dark horse)
+        if i == 6:
+            reasoning.append(f"**🌟 DARK HORSE / SLEEPER PICK**\n\n")
+            reasoning.append(f"**Why This High-Risk, High-Reward Pick?**\n")
+            
+            # Analyze what makes it a dark horse
+            if popularity < 10:
+                reasoning.append(
+                    f"- **Exceptional Contrarian Value**: With only {popularity:.1f}% popularity, "
+                    f"this pick offers maximum differentiation from the field. In large pools, "
+                    f"being different when you're right creates significant advantage.\n"
+                )
+            
+            if this_week >= 60:
+                reasoning.append(
+                    f"- **Respectable Win Probability**: Despite being a sleeper, {team} still has "
+                    f"a {this_week:.1f}% chance to win this week - not a blind gamble.\n"
+                )
+            
+            if path_ev > 0:
+                reasoning.append(
+                    f"- **Strong Path Value**: Path EV of {path_ev:.4f} suggests the rest-of-season "
+                    f"outlook remains favorable if you survive this week.\n"
+                )
+            
+            # Compare to top picks
+            top_pick = picks[0]
+            top_this_week = top_pick['win_probability_this_week'] * 100
+            top_pop = top_pick['pick_percentage_this_week'] * 100
+            
+            prob_gap = top_this_week - this_week
+            pop_gap = top_pop - popularity
+            
+            reasoning.append(
+                f"\n**Risk vs. Reward Analysis:**\n"
+                f"- You're giving up {prob_gap:.1f} percentage points of win probability vs. #{1} ({top_pick['recommended_team']})\n"
+                f"- In return, you gain {pop_gap:.1f}pp of differentiation (crowd is {pop_gap/popularity:.1f}x more likely to pick #{1})\n"
+                f"- **When This Makes Sense**: You're in a large pool ({pool_size}+ entries) where "
+                f"being contrarian is valuable, OR you've already used the safer options in previous weeks.\n"
+            )
+            
+            if this_week < 55:
+                reasoning.append(
+                    f"- **⚠️ Caution**: This is genuinely risky with under 60% win probability. "
+                    f"Only use if your pool strategy demands differentiation or you have no better options.\n"
+                )
+            
+            reasoning.append("\n")
+            continue
+        
+        # Regular pick analysis (Picks 1-5)
         if i == 1:
             reasoning.append(f"**Why #{i}?** {team} is the **optimal choice** because:\n")
             reasoning.append(f"- Highest composite score ({composite:.4f}) balancing safety and value\n")
@@ -460,11 +541,27 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
                 reasoning.append(f"- Low popularity ({popularity:.1f}%) creates differentiation advantage\n")
             elif popularity > 40:
                 reasoning.append(f"- High popularity ({popularity:.1f}%) indicates consensus confidence\n")
+            
+            # Compare to ALL other picks
+            reasoning.append(f"\n**Vs. All Other Options:**\n")
+            for j, other_pick in enumerate(picks[1:], 2):
+                other_score = other_pick.get('composite_score', 0)
+                score_advantage = (composite - other_score) / other_score * 100
+                reasoning.append(f"- {score_advantage:.1f}% higher composite score than #{j} ({other_pick['recommended_team']})\n")
         else:
+            # Compare against Pick #1 (absolute comparison)
+            top_pick = picks[0]
+            
+            # Also compare to immediately above pick (relative comparison)
             prev_pick = picks[i-2]
             prev_team = prev_pick['recommended_team']
             
-            # Calculate differences
+            # Calculate differences from #1
+            top_composite_diff = (top_pick.get('composite_score', 0) - composite) / top_pick.get('composite_score', 1) * 100
+            top_win_out_diff = (top_pick['overall_win_probability'] - pick['overall_win_probability']) * 100
+            top_this_week_diff = (top_pick['win_probability_this_week'] - pick['win_probability_this_week']) * 100
+            
+            # Calculate differences from previous pick
             composite_diff = (prev_pick.get('composite_score', 0) - composite) * 100
             win_out_diff = (prev_pick['overall_win_probability'] - pick['overall_win_probability']) * 100
             this_week_diff = (prev_pick['win_probability_this_week'] - pick['win_probability_this_week']) * 100
@@ -473,44 +570,48 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
             
             reasoning.append(f"**Why ranked below #{i-1} ({prev_team})?**\n")
             
-            # Composite score comparison
+            # Immediate comparison to previous pick
             if composite_diff > 0.001:
                 reasoning.append(f"- Composite score is {composite_diff:.2f}% lower ({composite:.4f} vs {prev_pick.get('composite_score', 0):.4f})\n")
             
-            # Win-out probability
             if abs(win_out_diff) > 0.5:
                 if win_out_diff > 0:
                     reasoning.append(f"- Win-out probability is {win_out_diff:.2f}% lower ({win_out:.2f}% vs {prev_pick['overall_win_probability']*100:.2f}%)\n")
                 else:
                     reasoning.append(f"- Despite {abs(win_out_diff):.2f}% higher win-out probability, other factors reduce overall score\n")
             
-            # This week comparison
             if abs(this_week_diff) > 2:
                 if this_week_diff > 0:
                     reasoning.append(f"- This week's win probability is {this_week_diff:.1f}% lower ({this_week:.1f}% vs {prev_pick['win_probability_this_week']*100:.1f}%)\n")
                 else:
                     reasoning.append(f"- This week's win probability is {abs(this_week_diff):.1f}% higher ({this_week:.1f}% vs {prev_pick['win_probability_this_week']*100:.1f}%), but path metrics are weaker\n")
             
-            # EV comparison (for larger pools)
             if pool_size > 50 and abs(ev_diff) > 0.001:
                 if ev_diff > 0:
                     reasoning.append(f"- Path EV is lower ({path_ev:.4f} vs {prev_pick.get('path_ev', 0):.4f}), reducing contrarian value\n")
                 else:
                     reasoning.append(f"- Higher path EV ({path_ev:.4f}) doesn't fully compensate for lower win probabilities\n")
             
-            # Popularity comparison
             if abs(popularity_diff) > 5:
                 if popularity_diff > 0:
                     reasoning.append(f"- {abs(popularity_diff):.1f}% less popular, but this doesn't offset probability disadvantages\n")
                 else:
                     reasoning.append(f"- {abs(popularity_diff):.1f}% more popular, reducing differentiation value\n")
             
-            # Add strength if it has any
+            # Comparison to #1 pick
+            reasoning.append(f"\n**Vs. Top Pick (#{1} {top_pick['recommended_team']}):**\n")
+            reasoning.append(f"- Composite score is {top_composite_diff:.2f}% lower\n")
+            if abs(top_this_week_diff) > 1:
+                reasoning.append(f"- This week win probability is {top_this_week_diff:.1f}pp {'lower' if top_this_week_diff > 0 else 'higher'}\n")
+            if abs(top_win_out_diff) > 0.5:
+                reasoning.append(f"- Win-out probability is {top_win_out_diff:.2f}pp {'lower' if top_win_out_diff > 0 else 'higher'}\n")
+            
+            # Add strengths if any
             if this_week > prev_pick['win_probability_this_week'] * 100:
-                reasoning.append(f"- **Strength:** Stronger immediate win probability provides more safety this week\n")
+                reasoning.append(f"\n**Strength:** Stronger immediate win probability ({this_week:.1f}% vs {prev_pick['win_probability_this_week']*100:.1f}%) provides more safety this week\n")
             
             if win_out > prev_pick['overall_win_probability'] * 100:
-                reasoning.append(f"- **Strength:** Better long-term survival path through season\n")
+                reasoning.append(f"**Strength:** Better long-term survival path through season ({win_out:.2f}% vs {prev_pick['overall_win_probability']*100:.2f}%)\n")
         
         reasoning.append("\n")
     
@@ -519,29 +620,39 @@ def generate_comparative_reasoning(picks: List[Dict], pool_size: int) -> str:
     
     best_pick = picks[0]
     if pool_size > 100:
-        reasoning.append(f"For your **large pool**, the optimizer prioritizes **Expected Value (EV)** heavily. ")
+        reasoning.append(f"For your **large pool** ({pool_size} entries), the optimizer prioritizes **Expected Value (EV)** heavily. ")
         reasoning.append(f"Pick #{1} ({best_pick['recommended_team']}) offers the best balance of survival probability and contrarian advantage.\n\n")
+        reasoning.append(f"**Large Pool Strategy Note:** In pools of {pool_size}+ entries, differentiation becomes crucial. ")
+        reasoning.append(f"The dark horse pick (#{6}) may be worth serious consideration if you need to separate from the crowd, ")
+        reasoning.append(f"especially if you've already used many high-safety options.\n\n")
     elif pool_size > 20:
-        reasoning.append(f"For your **medium pool**, the optimizer balances **safety and value**. ")
+        reasoning.append(f"For your **medium pool** ({pool_size} entries), the optimizer balances **safety and value**. ")
         reasoning.append(f"Pick #{1} ({best_pick['recommended_team']}) provides the optimal combination.\n\n")
     else:
-        reasoning.append(f"For your **small pool**, the optimizer prioritizes **raw win probability** heavily. ")
+        reasoning.append(f"For your **small pool** ({pool_size} entries), the optimizer prioritizes **raw win probability** heavily. ")
         reasoning.append(f"Pick #{1} ({best_pick['recommended_team']}) gives you the highest chance of surviving the season.\n\n")
     
     # Highlight spread in recommendations
     top_composite = picks[0].get('composite_score', 0)
-    bottom_composite = picks[-1].get('composite_score', 0)
+    bottom_composite = picks[-2].get('composite_score', 0)  # -2 to exclude dark horse in calculation
     score_spread = (top_composite - bottom_composite) / top_composite * 100
     
     if score_spread < 5:
-        reasoning.append(f"**Note:** All recommendations are very close (within {score_spread:.1f}%). ")
-        reasoning.append("Your personal preference and risk tolerance should guide the final decision.\n")
+        reasoning.append(f"**Picks #1-5 Analysis:** All top 5 recommendations are very close (within {score_spread:.1f}%). ")
+        reasoning.append("Your personal preference and risk tolerance should guide the final decision.\n\n")
     elif score_spread < 15:
-        reasoning.append(f"**Note:** Recommendations show moderate separation ({score_spread:.1f}% range). ")
-        reasoning.append("The top picks have measurable advantages.\n")
+        reasoning.append(f"**Picks #1-5 Analysis:** Recommendations show moderate separation ({score_spread:.1f}% range). ")
+        reasoning.append("The top picks have measurable advantages.\n\n")
     else:
-        reasoning.append(f"**Note:** Clear separation between picks ({score_spread:.1f}% range). ")
-        reasoning.append("The top recommendations have significant advantages.\n")
+        reasoning.append(f"**Picks #1-5 Analysis:** Clear separation between picks ({score_spread:.1f}% range). ")
+        reasoning.append("The top recommendations have significant advantages.\n\n")
+    
+    # Decision framework
+    reasoning.append("### 🎲 Decision Framework\n")
+    reasoning.append("**Choose Pick #1** if: You want maximum expected value and the best all-around choice\n\n")
+    reasoning.append("**Choose Picks #2-3** if: You want strong safety with slight trade-offs in specific areas\n\n")
+    reasoning.append("**Choose Picks #4-5** if: You need specific characteristics (home game, popularity, etc.)\n\n")
+    reasoning.append("**Choose Pick #6 (Dark Horse)** if: You're in a large pool and need differentiation, or you've exhausted safer options\n")
     
     return "".join(reasoning)
 
@@ -672,8 +783,8 @@ def main():
                 # Initialize optimizer
                 optimizer = SurvivorOptimizer(data, used_teams_list)
 
-                # Get top picks
-                top_picks = optimizer.get_top_picks(current_week, n_picks=5)
+                # Get top picks (including a 6th dark horse option)
+                top_picks = optimizer.get_top_picks(current_week, n_picks=6)
 
                 if not top_picks:
                     st.warning("No valid picks found. Check your configuration.")
