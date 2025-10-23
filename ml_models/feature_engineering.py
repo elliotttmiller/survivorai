@@ -12,6 +12,7 @@ Key features extracted:
 - Team strength ratings
 - Home/away advantages
 - Rest days and scheduling factors
+- Injury impact analysis (ENHANCED)
 """
 import pandas as pd
 import numpy as np
@@ -22,15 +23,29 @@ from datetime import datetime, timedelta
 class NFLFeatureEngineer:
     """Feature engineering for NFL game prediction."""
     
-    def __init__(self, historical_seasons: int = 3):
+    def __init__(self, historical_seasons: int = 3, use_injury_data: bool = True):
         """
         Initialize feature engineer.
         
         Args:
             historical_seasons: Number of past seasons to consider for historical features
+            use_injury_data: Whether to include injury analysis features (default True)
         """
         self.historical_seasons = historical_seasons
         self.team_stats_cache = {}
+        self.use_injury_data = use_injury_data
+        self.injury_collector = None
+        self.injury_analyzer = None
+        
+        # Initialize injury analysis components if enabled
+        if use_injury_data:
+            try:
+                from data_collection.injury_reports import InjuryReportCollector, InjuryImpactAnalyzer
+                self.injury_collector = InjuryReportCollector()
+                self.injury_analyzer = InjuryImpactAnalyzer()
+            except ImportError:
+                # Injury analysis not available, disable it
+                self.use_injury_data = False
         
     def extract_basic_features(self, game_data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -330,6 +345,56 @@ class NFLFeatureEngineer:
         # Placeholder - would calculate from play-by-play data
         return 5.2  # League average approximation
     
+    def extract_injury_features(self, team: str, week: Optional[int] = None) -> Dict:
+        """
+        Extract injury-related features for a team.
+        
+        ENHANCED: Analyzes injury reports to quantify their impact on team performance.
+        Research shows key player injuries can reduce win probability by 5-20%.
+        
+        Args:
+            team: Team name
+            week: Week number (optional)
+            
+        Returns:
+            Dictionary with injury features
+        """
+        features = {}
+        
+        if not self.use_injury_data or not self.injury_collector or not self.injury_analyzer:
+            # Injury data not available, return zero impact
+            features[f'{team}_injury_impact'] = 0.0
+            features[f'{team}_has_qb_injury'] = 0
+            features[f'{team}_num_key_injuries'] = 0
+            return features
+        
+        try:
+            # Get injury data for the team
+            injuries = self.injury_collector.get_team_injuries(team, week)
+            
+            # Calculate overall injury impact
+            injury_impact = self.injury_analyzer.calculate_team_injury_impact(injuries)
+            features[f'{team}_injury_impact'] = injury_impact
+            
+            # Check for QB injury specifically (most impactful position)
+            has_qb_injury = any(
+                inj.get('position') == 'QB' and inj.get('status') in ['OUT', 'DOUBTFUL']
+                for inj in injuries
+            )
+            features[f'{team}_has_qb_injury'] = int(has_qb_injury)
+            
+            # Count critical injuries
+            critical_injuries = self.injury_analyzer.get_critical_injuries(injuries)
+            features[f'{team}_num_key_injuries'] = len(critical_injuries)
+            
+        except Exception as e:
+            # If injury data fetch fails, use zero impact (safe fallback)
+            features[f'{team}_injury_impact'] = 0.0
+            features[f'{team}_has_qb_injury'] = 0
+            features[f'{team}_num_key_injuries'] = 0
+        
+        return features
+    
     def extract_comprehensive_features(
         self,
         team: str,
@@ -350,6 +415,7 @@ class NFLFeatureEngineer:
         - Recent form
         - Rest and scheduling factors
         - Advanced analytics (EPA, DVOA-proxy, success rate) [ENHANCED]
+        - Injury impact analysis [ENHANCED v3.0]
         
         Args:
             team: Team name
@@ -422,6 +488,15 @@ class NFLFeatureEngineer:
         features[f'{opponent}_success_rate'] = self.calculate_success_rate(opponent)
         features[f'{team}_explosive_play_rate'] = self.calculate_explosive_play_rate(team)
         features[f'{opponent}_explosive_play_rate'] = self.calculate_explosive_play_rate(opponent)
+        
+        # ENHANCED v3.0: Injury analysis features
+        features.update(self.extract_injury_features(team, week))
+        features.update(self.extract_injury_features(opponent, week))
+        
+        # Calculate net injury advantage
+        team_injury_impact = features.get(f'{team}_injury_impact', 0.0)
+        opponent_injury_impact = features.get(f'{opponent}_injury_impact', 0.0)
+        features['net_injury_advantage'] = opponent_injury_impact - team_injury_impact
         
         return features
     

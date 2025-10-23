@@ -4,7 +4,7 @@ Comprehensive listing of all features, algorithms, and capabilities in Survivor 
 
 ## 📊 Machine Learning & Prediction
 
-### Feature Engineering (35+ Features per Game)
+### Feature Engineering (56 Features per Game - Enhanced v3.0)
 
 #### Basic Features
 - **Week Number** - Current NFL week (1-18)
@@ -48,6 +48,14 @@ Comprehensive listing of all features, algorithms, and capabilities in Survivor 
 - Days since last game
 - Bye week benefit
 - Thursday/Monday night factors
+
+### Injury Analysis (ENHANCED v3.0)
+- Team injury impact score (0-1 scale)
+- QB injury flag (binary)
+- Number of key injuries
+- Net injury advantage
+- Position-weighted impact
+- Severity-adjusted scoring
 
 ### ML Models
 
@@ -487,7 +495,7 @@ MEDIUM_POOL = 200
 - Mobile app
 
 ### Research
-- Injury impact models
+- [x] Injury impact models ✅ **IMPLEMENTED v3.0**
 - Weather effects
 - Home crowd factors
 - Playoff probability

@@ -71,16 +71,21 @@ NFL Survivor Pools require you to pick one team to win each week, but you can on
 - **CatBoost** - Best-in-class categorical feature handling 🆕 NEW
 - **Enhanced Ensemble** - 5-model ensemble with dynamic weighting for superior performance
 
-### Advanced Feature Engineering (49+ Features)
+### Advanced Feature Engineering (56+ Features - Enhanced v3.5)
 - **Pythagorean Expectation** - NFL-optimized win probability (exponent 2.37)
 - **Elo Rating System** - Dynamic team strength ratings
 - **Offensive/Defensive Metrics** - Points per game, yards per play, efficiency ratings
 - **Recent Form Analysis** - Momentum and trend tracking
 - **Rest Advantage** - Scheduling factors and bye week considerations
-- **EPA (Expected Points Added)** - Play-level efficiency metrics 🆕 NEW
-- **DVOA-Proxy** - Defense-adjusted efficiency ratings 🆕 NEW
-- **Success Rate** - Play success percentage analysis 🆕 NEW
-- **Explosive Play Metrics** - Big play rate analysis 🆕 NEW
+- **EPA (Expected Points Added)** - Play-level efficiency metrics 🆕 v2.0
+- **DVOA-Proxy** - Defense-adjusted efficiency ratings 🆕 v2.0
+- **Success Rate** - Play success percentage analysis 🆕 v2.0
+- **Explosive Play Metrics** - Big play rate analysis 🆕 v2.0
+- **Enhanced Injury Analysis** - Research-based injury impact with web scraping ⚡ v3.5 ENHANCED
+  - Multi-source web scraping (ESPN + CBS Sports)
+  - 27 position types with WAR-based weights
+  - 16 injury-specific severity multipliers
+  - Based on NFL/AWS, PFF, academic research
 
 ### Optimization & Strategy
 - **Hungarian Algorithm** - Optimal team-to-week assignment path
@@ -248,8 +253,10 @@ This system incorporates findings from peer-reviewed research:
 - ✅ Advanced feature engineering (IMPLEMENTED)
 - ✅ LightGBM and CatBoost models (IMPLEMENTED v2.0)
 - ✅ EPA and DVOA-inspired metrics (IMPLEMENTED v2.0)
+- ✅ Injury analysis and impact modeling (IMPLEMENTED v3.0) ⚡ NEW
 - 🔄 Historical performance tracking (IN PROGRESS)
 - 🔄 Monte Carlo simulations for variance analysis (IN PROGRESS)
+- 📋 Real-time injury report API integration (ESPN/NFL.com)
 - 📋 Multi-entry optimization (for pools allowing multiple entries)
 - 📋 Weekly email notifications with picks
 - 📋 Real-time game tracking and live win probability updates
