@@ -518,7 +518,8 @@ def main():
 
                     with st.expander(
                         expander_label,
-                        expanded=(i == 1)
+                        expanded=(i == 1),
+                        key=f"pick_expander_{i}"
                     ):
                         # Get enhanced explanation
                         explanation = get_enhanced_explanation(pick, data, explainer)
@@ -644,7 +645,7 @@ def main():
                             )
                             
                             # Model agreement details
-                            with st.expander("📋 Detailed Model Predictions"):
+                            with st.expander("📋 Detailed Model Predictions", key=f"model_predictions_expander_{i}"):
                                 for model in ensemble['model_breakdown']:
                                     agree_icon = "✓" if model['agrees'] else "✗"
                                     col1, col2, col3 = st.columns([2, 1, 1])
@@ -692,6 +693,7 @@ def main():
                             path_df,
                             use_container_width=True,
                             hide_index=True,
+                            key=f"path_dataframe_{i}",
                             column_config={
                                 "Week": st.column_config.NumberColumn("Week", width="small"),
                                 "Pick": st.column_config.TextColumn("Pick", width="medium"),
