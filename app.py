@@ -638,7 +638,7 @@ def main():
         st.caption("✓ SurvivorGrid (crowd data)")
         st.caption("✓ Advanced Metrics (Elo, etc.)")
         st.caption("✓ Historical Statistics")
-        st.caption("✓ Injury Analysis (ESPN + CBS + The Huddle)")
+        st.caption("✓ Injury Analysis (ESPN + CBS Sports)")
         
         if use_odds_api:
             st.caption("✓ The Odds API (live odds)")
@@ -766,11 +766,15 @@ def main():
                                             st.markdown(f"  • Injury: {detail['injury_type']}")
                                             st.markdown(f"  • Impact Score: {detail['impact']:.3f}")
                                             
-                                            # Show The Huddle analysis if available
+                                            # Show analysis if available
                                             if detail.get('analysis'):
                                                 st.markdown(f"  • **Analysis:** {detail['analysis'][:300]}...")
                                             
                                             st.markdown("")
+                                        
+                                        # Show note if using estimated data
+                                        if team_injury_summary.get('using_fallback', False):
+                                            st.caption("ℹ️ Using estimated injury data. Real-time data temporarily unavailable.")
                                 
                                 # Show how injuries affect the prediction
                                 st.caption(f"**Impact on Prediction:** Injuries reduce this team's effective strength by approximately {impact_score*100:.1f}%. This is factored into the win probability and recommendation scores above.")
