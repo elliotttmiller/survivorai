@@ -771,6 +771,10 @@ def main():
                                                 st.markdown(f"  • **Analysis:** {detail['analysis'][:300]}...")
                                             
                                             st.markdown("")
+                                        
+                                        # Show note if using estimated data
+                                        if team_injury_summary.get('using_fallback', False):
+                                            st.caption("ℹ️ Using estimated injury data. Real-time data temporarily unavailable.")
                                 
                                 # Show how injuries affect the prediction
                                 st.caption(f"**Impact on Prediction:** Injuries reduce this team's effective strength by approximately {impact_score*100:.1f}%. This is factored into the win probability and recommendation scores above.")

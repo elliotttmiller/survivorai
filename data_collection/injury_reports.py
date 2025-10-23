@@ -1006,10 +1006,15 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
         Dictionary with injury summary information
     """
     try:
-        collector = InjuryReportCollector()
+        collector = InjuryReportCollector(use_fallback=True)  # Enable fallback data
         analyzer = InjuryImpactAnalyzer()
         
         injuries = collector.get_team_injuries(team, week)
+        
+        # Check if using fallback data
+        using_fallback = False
+        if injuries and injuries[0].get('source') == 'Fallback (Estimated)':
+            using_fallback = True
         
         if not injuries:
             return {
@@ -1017,7 +1022,8 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
                 'impact_score': 0.0,
                 'impact_level': 'None',
                 'summary': 'No significant injuries reported',
-                'details': []
+                'details': [],
+                'using_fallback': False
             }
         
         # Calculate impact
@@ -1065,8 +1071,11 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
             'summary': summary,
             'details': details,
             'total_injuries': len(injuries),
-            'critical_count': len(critical_injuries)
+            'critical_count': len(critical_injuries),
+            'using_fallback': using_fallback
         }
+    
+    
     
     except Exception as e:
         print(f"Error getting injury summary for {team}: {e}")
