@@ -327,13 +327,38 @@ def get_enhanced_explanation(pick: Dict, data: pd.DataFrame, explainer: ModelExp
     features = {}
     if not team_data.empty:
         row = team_data.iloc[0]
+        
+        # Map actual data columns to expected feature names
+        # Use team_elo if available, otherwise default to 1500
+        elo_rating = row.get('team_elo', row.get('elo_rating', 1500))
+        
+        # Use elo_win_probability or pythagorean_win_prob if available
+        pythagorean_win_prob = row.get('elo_win_probability', 
+                                       row.get('pythagorean_win_prob', 0.5))
+        
+        # Normalize spread to -1 to 1 range (divide by 14, typical max spread)
+        spread_raw = row.get('spread', 0)
+        spread_normalized = spread_raw / 14.0 if pd.notna(spread_raw) else 0
+        
+        # Check if there's any home indicator in the data
+        home_advantage = row.get('home_advantage', row.get('is_home', 0))
+        
+        # Use recent_win_pct or recent_point_diff as recent_form indicator
+        # Combine both if available, normalize to -1 to 1 range
+        recent_win_pct = row.get('recent_win_pct', 0.5)
+        recent_point_diff = row.get('recent_point_diff', 0)
+        recent_form = (recent_win_pct - 0.5) * 2 + (recent_point_diff / 14.0)
+        
+        # Rest advantage not typically in data, default to 0
+        rest_advantage = row.get('rest_advantage', 0)
+        
         features = {
-            'elo_rating': row.get('elo_rating', 1500),
-            'pythagorean_win_prob': row.get('pythagorean_win_prob', 0.5),
-            'spread_normalized': row.get('spread_normalized', 0),
-            'home_advantage': row.get('home_advantage', 0),
-            'recent_form': row.get('recent_form', 0),
-            'rest_advantage': row.get('rest_advantage', 0)
+            'elo_rating': elo_rating,
+            'pythagorean_win_prob': pythagorean_win_prob,
+            'spread_normalized': spread_normalized,
+            'home_advantage': home_advantage,
+            'recent_form': recent_form,
+            'rest_advantage': rest_advantage
         }
     
     # Generate explanation
@@ -751,12 +776,21 @@ def main():
                         # Feature Contributions Chart
                         st.markdown("#### 📊 Feature Impact Analysis")
                         if explanation['feature_contributions']:
+                            # Add explanatory text
+                            st.caption("This chart shows how different factors contribute to the win probability prediction. Positive values (green) increase the likelihood of winning, while negative values (red) decrease it.")
+                            
                             st.plotly_chart(
                                 create_feature_contribution_chart(explanation['feature_contributions']),
                                 use_container_width=True,
                                 config={'displayModeBar': False},
                                 key=f"feature_contribution_{i}"
                             )
+                            
+                            # Highlight most impactful feature
+                            if explanation['feature_contributions']:
+                                top_feature = explanation['feature_contributions'][0]
+                                impact_word = "strongest advantage" if top_feature['impact'] == 'positive' else "biggest concern"
+                                st.info(f"**Key Insight:** {top_feature['feature']} is the {impact_word}, contributing {abs(top_feature['contribution'])*100:.1f} percentage points to the prediction.")
                             
                             # Show strengths and concerns
                             col1, col2 = st.columns(2)
