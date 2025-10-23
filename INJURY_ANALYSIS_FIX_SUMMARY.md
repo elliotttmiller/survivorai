@@ -4,7 +4,7 @@
 
 The application was experiencing two major issues:
 
-1. **SSL Certificate Errors**: Continuous log spam from The Huddle injury scraper failing with SSL certificate verification errors
+1. **SSL Certificate Errors**: Continuous log spam from injury scrapers failing with SSL certificate verification errors
 2. **Missing Injury Data**: All injury reports showed "0 injuries for concern" because:
    - Injury data collection was failing silently
    - Injury analysis was not integrated into the prediction pipeline
@@ -16,10 +16,10 @@ The application was experiencing two major issues:
 
 **File**: `data_collection/injury_reports.py`
 
-- Added `verify=False` to The Huddle scraper's requests to bypass SSL certificate verification
+- Added `verify=False` to injury scrapers' requests to bypass SSL certificate verification
 - Suppressed urllib3 SSL warnings globally using `urllib3.disable_warnings()`
 - Implemented error tracking to only log errors once per hour instead of every call
-- Added `is_available` flag to disable scraper after first failure to prevent spam
+- Added `is_available` flag to disable scrapers after first failure to prevent spam
 
 **Result**: SSL errors reduced from continuous spam to a single warning per session
 
@@ -60,7 +60,6 @@ The application was experiencing two major issues:
 **Changes**:
 - Reduced scraper timeouts from 10s to 5s for faster failure
 - Only add delays between scrapers if they returned data
-- Skip The Huddle scraper if already marked as unavailable
 - Silent failure for ESPN and CBS scrapers (no error messages)
 
 **Result**: Data collection fails fast without blocking the application

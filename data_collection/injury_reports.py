@@ -9,6 +9,7 @@ the impact of key player injuries on team performance.
 Data Sources:
 - ESPN NFL Injury Reports (web scraping)
 - CBS Sports NFL Injury Reports (web scraping)
+- NFL Official Injury Reports (when available)
 - Cached data with automatic refresh
 
 Impact Analysis:
@@ -254,167 +255,6 @@ class CBSSportsInjuryScraper:
             return []
 
 
-class TheHuddleInjuryScraper:
-    """Scraper for The Huddle NFL fantasy football player news (injury analysis)."""
-    
-    def __init__(self):
-        """Initialize The Huddle scraper."""
-        self.base_url = "https://tools.thehuddle.com/nfl-fantasy-football-player-news/"
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
-        # Track if scraper is working to avoid spamming errors
-        self.is_available = True
-        self.last_error_time = None
-    
-    def scrape_injuries(self) -> List[Dict]:
-        """
-        Scrape injury and player news data from The Huddle.
-        
-        The Huddle provides both official injury status and analytical commentary
-        which is valuable for understanding injury impact.
-        
-        Returns:
-            List of injury dictionaries with analysis
-        """
-        # Skip if we know this scraper is down to avoid log spam
-        if not self.is_available:
-            return []
-            
-        try:
-            # Use verify=False to bypass SSL certificate verification issues
-            response = self.session.get(self.base_url, timeout=5, verify=False)  # Reduced timeout to fail faster
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.content, 'html.parser')
-            injuries = []
-            
-            # The Huddle uses player news items, typically in article or list format
-            # Find news entries - adjust selectors based on actual HTML structure
-            news_items = soup.find_all(['article', 'div'], class_=re.compile(r'(news|player|injury)', re.I))
-            
-            for item in news_items:
-                try:
-                    # Extract player name
-                    player_elem = item.find(['h2', 'h3', 'h4', 'span', 'strong'], class_=re.compile(r'(player|name)', re.I))
-                    if not player_elem:
-                        player_elem = item.find(['h2', 'h3', 'h4'])
-                    
-                    if not player_elem:
-                        continue
-                    
-                    player_name = player_elem.get_text(strip=True)
-                    
-                    # Extract team and position (often together like "QB, Chiefs")
-                    team = "Unknown"
-                    position = "UNK"
-                    meta_elem = item.find(['span', 'div'], class_=re.compile(r'(team|position|meta)', re.I))
-                    if meta_elem:
-                        meta_text = meta_elem.get_text(strip=True)
-                        # Parse "QB, Kansas City Chiefs" format
-                        parts = [p.strip() for p in meta_text.split(',')]
-                        if len(parts) >= 1:
-                            position = parts[0].upper()
-                        if len(parts) >= 2:
-                            team = parts[1]
-                    
-                    # Extract news content/analysis
-                    content_elem = item.find(['p', 'div'], class_=re.compile(r'(content|description|analysis|news)', re.I))
-                    if not content_elem:
-                        content_elem = item.find('p')
-                    
-                    analysis = ""
-                    if content_elem:
-                        analysis = content_elem.get_text(strip=True)
-                    
-                    # Determine injury status from content
-                    status = self._extract_status_from_text(analysis)
-                    injury_type = self._extract_injury_type_from_text(analysis)
-                    
-                    # Only add if injury-related
-                    if status != 'HEALTHY' or injury_type != 'UNKNOWN':
-                        injury = {
-                            'team': team,
-                            'player_name': player_name,
-                            'position': position,
-                            'status': status,
-                            'injury_type': injury_type,
-                            'analysis': analysis[:500] if analysis else '',  # Limit length
-                            'source': 'The Huddle',
-                            'date_reported': datetime.now().isoformat(),
-                        }
-                        injuries.append(injury)
-                
-                except Exception as e:
-                    # Skip malformed entries
-                    continue
-            
-            # Mark as working if we get here
-            self.is_available = True
-            return injuries
-            
-        except Exception as e:
-            # Only print error once, then mark as unavailable
-            current_time = datetime.now()
-            if self.last_error_time is None or (current_time - self.last_error_time).total_seconds() > 3600:
-                print(f"Error scraping The Huddle injuries: {e}")
-                print("The Huddle scraper is temporarily disabled to prevent log spam")
-                self.last_error_time = current_time
-            self.is_available = False
-            return []
-    
-    def _extract_status_from_text(self, text: str) -> str:
-        """Extract injury status from text content."""
-        text_upper = text.upper()
-        
-        # Priority order for status detection
-        if any(word in text_upper for word in ['OUT', 'RULED OUT', 'WILL NOT PLAY', 'INACTIVE']):
-            return 'OUT'
-        elif 'INJURED RESERVE' in text_upper or 'IR' in text_upper:
-            return 'INJURED RESERVE'
-        elif 'DOUBTFUL' in text_upper:
-            return 'DOUBTFUL'
-        elif 'QUESTIONABLE' in text_upper:
-            return 'QUESTIONABLE'
-        elif any(word in text_upper for word in ['PROBABLE', 'EXPECTED TO PLAY', 'LIKELY TO PLAY']):
-            return 'PROBABLE'
-        elif 'DAY-TO-DAY' in text_upper or 'DAY TO DAY' in text_upper:
-            return 'DAY_TO_DAY'
-        
-        return 'HEALTHY'
-    
-    def _extract_injury_type_from_text(self, text: str) -> str:
-        """Extract injury type from text content."""
-        text_upper = text.upper()
-        
-        # Check for specific injury keywords
-        injury_keywords = {
-            'ACL': 'ACL',
-            'ACHILLES': 'ACHILLES',
-            'CONCUSSION': 'CONCUSSION',
-            'HAMSTRING': 'HAMSTRING',
-            'HIGH ANKLE': 'HIGH ANKLE SPRAIN',
-            'ANKLE SPRAIN': 'ANKLE',
-            'MCL': 'MCL',
-            'KNEE': 'KNEE',
-            'SHOULDER': 'SHOULDER',
-            'GROIN': 'GROIN',
-            'BACK': 'BACK',
-            'FRACTURE': 'FRACTURE',
-            'BROKEN': 'FRACTURE',
-            'TORN': 'TORN',
-            'SURGERY': 'SURGERY',
-            'ILLNESS': 'ILLNESS',
-        }
-        
-        for keyword, injury_type in injury_keywords.items():
-            if keyword in text_upper:
-                return injury_type
-        
-        return 'UNKNOWN'
-
-
 class InjuryReportCollector:
     """ENHANCED: Collects and processes NFL injury reports from multiple web sources."""
     
@@ -432,10 +272,9 @@ class InjuryReportCollector:
         self.cache_file = os.path.join(cache_dir, 'injury_reports.json')
         self.use_fallback = use_fallback
         
-        # Initialize scrapers
+        # Initialize scrapers (ESPN and CBS Sports only)
         self.espn_scraper = ESPNInjuryScraper()
         self.cbs_scraper = CBSSportsInjuryScraper()
-        self.huddle_scraper = TheHuddleInjuryScraper()
         
         # Create cache directory if it doesn't exist
         os.makedirs(cache_dir, exist_ok=True)
@@ -492,8 +331,9 @@ class InjuryReportCollector:
                 all_injuries[team] = []
             all_injuries[team].append(injury)
         
-        # Add delay to be respectful
-        time.sleep(1)
+        # Only add delay if we got results
+        if espn_injuries:
+            time.sleep(1)
         
         # Scrape from CBS Sports
         cbs_injuries = self.cbs_scraper.scrape_injuries()
@@ -506,29 +346,6 @@ class InjuryReportCollector:
             if injury['player_name'] not in player_names:
                 all_injuries[team].append(injury)
         
-        # Add delay
-        time.sleep(1)
-        
-        # Scrape from The Huddle
-        huddle_injuries = self.huddle_scraper.scrape_injuries()
-        for injury in huddle_injuries:
-            team = injury['team']
-            if team not in all_injuries:
-                all_injuries[team] = []
-            # Check if player exists
-            player_names = [i['player_name'] for i in all_injuries[team]]
-            if injury['player_name'] not in player_names:
-                all_injuries[team].append(injury)
-            else:
-                # Enhance existing entry with The Huddle analysis
-                for existing_inj in all_injuries[team]:
-                    if existing_inj['player_name'] == injury['player_name']:
-                        if 'analysis' in injury and injury['analysis']:
-                            existing_inj['analysis'] = injury['analysis']
-                        if injury.get('injury_type', 'UNKNOWN') != 'UNKNOWN' and existing_inj.get('injury_type', 'UNKNOWN') == 'UNKNOWN':
-                            existing_inj['injury_type'] = injury['injury_type']
-                        break
-        
         # Cache all data
         for team, injuries in all_injuries.items():
             self._save_to_cache(team, injuries)
@@ -537,7 +354,7 @@ class InjuryReportCollector:
     
     def _fetch_injury_data(self, team: str, week: Optional[int] = None) -> List[Dict]:
         """
-        ENHANCED: Fetch injury data from multiple web sources (ESPN + CBS + The Huddle).
+        ENHANCED: Fetch injury data from multiple web sources (ESPN + CBS Sports).
         
         Args:
             team: Team name
@@ -567,32 +384,6 @@ class InjuryReportCollector:
             for cbs_inj in team_injuries_cbs:
                 if cbs_inj['player_name'] not in espn_players:
                     injuries.append(cbs_inj)
-            
-            # Only add delay if we got results
-            if cbs_injuries:
-                time.sleep(0.5)
-            
-            # Scrape The Huddle only if it's available (fantasy football player news with injury analysis)
-            if self.huddle_scraper.is_available:
-                huddle_injuries = self.huddle_scraper.scrape_injuries()
-                team_injuries_huddle = [inj for inj in huddle_injuries if self._normalize_team_name(inj['team']) == self._normalize_team_name(team)]
-                
-                # Deduplicate but keep The Huddle's analysis if it adds value
-                all_players = espn_players + [inj['player_name'] for inj in team_injuries_cbs]
-                for huddle_inj in team_injuries_huddle:
-                    if huddle_inj['player_name'] not in all_players:
-                        injuries.append(huddle_inj)
-                    else:
-                        # If player already exists, enhance with The Huddle's analysis
-                        for existing_inj in injuries:
-                            if existing_inj['player_name'] == huddle_inj['player_name']:
-                                # Add analysis if available
-                                if 'analysis' in huddle_inj and huddle_inj['analysis']:
-                                    existing_inj['analysis'] = huddle_inj['analysis']
-                                # Update injury type if The Huddle has more specific info
-                                if huddle_inj.get('injury_type', 'UNKNOWN') != 'UNKNOWN' and existing_inj.get('injury_type', 'UNKNOWN') == 'UNKNOWN':
-                                    existing_inj['injury_type'] = huddle_inj['injury_type']
-                                break
             
         except Exception as e:
             print(f"Error fetching injury data for {team}: {e}")
