@@ -710,7 +710,7 @@ def main():
 
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
-                with st.expander("Error details"):
+                with st.expander("Error details", key="error_details_expander"):
                     st.exception(e)
 
     else:
