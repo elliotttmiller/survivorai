@@ -71,7 +71,7 @@ NFL Survivor Pools require you to pick one team to win each week, but you can on
 - **CatBoost** - Best-in-class categorical feature handling 🆕 NEW
 - **Enhanced Ensemble** - 5-model ensemble with dynamic weighting for superior performance
 
-### Advanced Feature Engineering (56 Features - Enhanced v3.0)
+### Advanced Feature Engineering (56+ Features - Enhanced v3.5)
 - **Pythagorean Expectation** - NFL-optimized win probability (exponent 2.37)
 - **Elo Rating System** - Dynamic team strength ratings
 - **Offensive/Defensive Metrics** - Points per game, yards per play, efficiency ratings
@@ -81,7 +81,11 @@ NFL Survivor Pools require you to pick one team to win each week, but you can on
 - **DVOA-Proxy** - Defense-adjusted efficiency ratings 🆕 v2.0
 - **Success Rate** - Play success percentage analysis 🆕 v2.0
 - **Explosive Play Metrics** - Big play rate analysis 🆕 v2.0
-- **Injury Analysis** - Real-time injury impact on predictions ⚡ v3.0 NEW
+- **Enhanced Injury Analysis** - Research-based injury impact with web scraping ⚡ v3.5 ENHANCED
+  - Multi-source web scraping (ESPN + CBS Sports)
+  - 27 position types with WAR-based weights
+  - 16 injury-specific severity multipliers
+  - Based on NFL/AWS, PFF, academic research
 
 ### Optimization & Strategy
 - **Hungarian Algorithm** - Optimal team-to-week assignment path
