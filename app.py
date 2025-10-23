@@ -776,12 +776,21 @@ def main():
                         # Feature Contributions Chart
                         st.markdown("#### 📊 Feature Impact Analysis")
                         if explanation['feature_contributions']:
+                            # Add explanatory text
+                            st.caption("This chart shows how different factors contribute to the win probability prediction. Positive values (green) increase the likelihood of winning, while negative values (red) decrease it.")
+                            
                             st.plotly_chart(
                                 create_feature_contribution_chart(explanation['feature_contributions']),
                                 use_container_width=True,
                                 config={'displayModeBar': False},
                                 key=f"feature_contribution_{i}"
                             )
+                            
+                            # Highlight most impactful feature
+                            if explanation['feature_contributions']:
+                                top_feature = explanation['feature_contributions'][0]
+                                impact_word = "strongest advantage" if top_feature['impact'] == 'positive' else "biggest concern"
+                                st.info(f"**Key Insight:** {top_feature['feature']} is the {impact_word}, contributing {abs(top_feature['contribution'])*100:.1f} percentage points to the prediction.")
                             
                             # Show strengths and concerns
                             col1, col2 = st.columns(2)
