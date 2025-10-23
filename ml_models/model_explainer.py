@@ -367,69 +367,43 @@ class ModelExplainer:
         else:
             outlook = "underdog"
         
-        summary = (
-            f"{team} is projected as a {outlook} against {opponent} in Week {week} "
-            f"with a {win_pct:.1f}% win probability."
+        # Enhanced comprehensive summary
+        summary = self._build_comprehensive_summary(
+            team, opponent, week, win_probability, outlook,
+            feature_contributions, confidence, risk_assessment, spread, moneyline
         )
         
-        # Key strengths
+        # Key strengths - more comprehensive
         strengths = []
-        for contrib in feature_contributions[:3]:  # Top 3 positive
-            if contrib['impact'] == 'positive' and contrib['contribution'] > 0.03:
-                strengths.append(contrib['description'])
+        for contrib in feature_contributions:
+            if contrib['impact'] == 'positive' and contrib['contribution'] > 0.02:
+                # Add detailed explanation
+                strength_detail = self._explain_feature_strength(contrib, team)
+                strengths.append(strength_detail)
         
-        # Key concerns
+        # Key concerns - more comprehensive
         concerns = []
-        for contrib in feature_contributions[:3]:
-            if contrib['impact'] == 'negative' and abs(contrib['contribution']) > 0.03:
-                concerns.append(contrib['description'])
+        for contrib in feature_contributions:
+            if contrib['impact'] == 'negative' and abs(contrib['contribution']) > 0.02:
+                # Add detailed explanation
+                concern_detail = self._explain_feature_concern(contrib, team, opponent)
+                concerns.append(concern_detail)
         
-        # Add risk factors
+        # Add risk factors with detailed context
         for risk_factor in risk_assessment['factors']:
             if risk_factor['severity'] in ['high', 'medium']:
-                concerns.append(risk_factor['description'])
+                concerns.append(f"{risk_factor['description']} (Impact: {risk_factor['severity']})")
         
-        # Betting context
-        betting_context = ""
-        if spread is not None:
-            if spread < -7:
-                betting_context = f"Vegas has {team} as a heavy favorite ({spread:.1f} point spread)"
-            elif spread < -3:
-                betting_context = f"Vegas favors {team} ({spread:.1f} point spread)"
-            elif spread < -0.5:
-                betting_context = f"Vegas slightly favors {team} ({spread:.1f} point spread)"
-            elif spread < 0.5:
-                betting_context = f"Vegas sees this as a toss-up (pick'em)"
-            else:
-                betting_context = f"Vegas favors {opponent} ({-spread:.1f} point spread)"
+        # Enhanced betting context
+        betting_context = self._build_betting_context(
+            team, opponent, spread, moneyline, win_probability
+        )
         
-        if moneyline is not None:
-            if betting_context:
-                betting_context += f", moneyline: {moneyline:+d}"
-            else:
-                betting_context = f"Moneyline: {moneyline:+d}"
-        
-        # Recommendation
-        if win_probability >= 0.75 and confidence['score'] > 0.5:
-            recommendation = (
-                f"STRONG PICK: High confidence in {team} winning. "
-                f"Excellent survivor pool selection for Week {week}."
-            )
-        elif win_probability >= 0.65 and confidence['score'] > 0.35:
-            recommendation = (
-                f"GOOD PICK: Solid choice with {team} having clear advantages. "
-                f"Recommended for survivor pools."
-            )
-        elif win_probability >= 0.55:
-            recommendation = (
-                f"MODERATE PICK: {team} has an edge but not overwhelming. "
-                f"Consider your pool strategy and alternative options."
-            )
-        else:
-            recommendation = (
-                f"RISKY PICK: Low confidence in this selection. "
-                f"Only use if necessary or as a contrarian play."
-            )
+        # Enhanced recommendation with more context
+        recommendation = self._build_comprehensive_recommendation(
+            team, opponent, week, win_probability, confidence,
+            risk_assessment, strengths, concerns
+        )
         
         return {
             'summary': summary,
@@ -439,6 +413,302 @@ class ModelExplainer:
             'recommendation': recommendation,
             'confidence_note': confidence['description']
         }
+    
+    def _build_comprehensive_summary(
+        self,
+        team: str,
+        opponent: str,
+        week: int,
+        win_probability: float,
+        outlook: str,
+        feature_contributions: List[Dict],
+        confidence: Dict,
+        risk_assessment: Dict,
+        spread: Optional[float],
+        moneyline: Optional[int]
+    ) -> str:
+        """Build a comprehensive prediction summary."""
+        win_pct = win_probability * 100
+        
+        # Base summary
+        summary_parts = [
+            f"{team} is projected as a {outlook} against {opponent} in Week {week} "
+            f"with a {win_pct:.1f}% win probability."
+        ]
+        
+        # Add key driver explanation
+        top_factors = [c for c in feature_contributions[:3] if abs(c['contribution']) > 0.04]
+        if top_factors:
+            primary_driver = top_factors[0]
+            driver_text = (
+                f" This projection is primarily driven by "
+                f"{primary_driver['feature'].lower()} ({primary_driver['description'].lower()})"
+            )
+            if primary_driver['impact'] == 'positive':
+                driver_text += f", which significantly favors {team}."
+            else:
+                driver_text += f", which presents a notable challenge."
+            summary_parts.append(driver_text)
+        
+        # Add confidence context
+        if confidence['level'] in ['Very High', 'High']:
+            summary_parts.append(
+                f" Our analysis shows {confidence['level'].lower()} confidence in this prediction, "
+                f"with multiple indicators aligning in the same direction."
+            )
+        elif confidence['level'] in ['Low', 'Very Low']:
+            summary_parts.append(
+                f" This matchup shows {confidence['level'].lower()} confidence due to "
+                f"closely matched teams and competing factors."
+            )
+        
+        # Add market alignment
+        if spread is not None:
+            market_alignment = self._assess_market_alignment(win_probability, spread)
+            if market_alignment:
+                summary_parts.append(f" {market_alignment}")
+        
+        return "".join(summary_parts)
+    
+    def _assess_market_alignment(self, win_probability: float, spread: float) -> str:
+        """Assess how our prediction aligns with betting markets."""
+        # Convert spread to approximate win probability
+        # Rule of thumb: each point ≈ 3.3% win probability shift from 50%
+        if spread is not None:
+            market_implied_prob = 0.5 + (spread * -0.033)
+            market_implied_prob = max(0.1, min(0.9, market_implied_prob))
+            
+            diff = abs(win_probability - market_implied_prob)
+            
+            if diff < 0.05:
+                return "Our model closely aligns with Vegas betting markets."
+            elif diff < 0.10:
+                if win_probability > market_implied_prob:
+                    return "Our model is slightly more bullish than Vegas markets suggest."
+                else:
+                    return "Our model is slightly more conservative than Vegas markets."
+            elif win_probability > market_implied_prob:
+                return "Our model sees significantly more value here than Vegas markets are pricing in."
+            else:
+                return "Vegas markets are more optimistic than our analytical models suggest."
+        return ""
+    
+    def _explain_feature_strength(self, contrib: Dict, team: str) -> str:
+        """Explain why a positive feature is a strength."""
+        feature = contrib['feature']
+        value = contrib.get('value', 0)
+        contribution = contrib['contribution']
+        
+        explanations = {
+            'Elo Rating': (
+                f"Elite team strength rating ({value:.0f}) places {team} in top tier, "
+                f"adding ~{contribution*100:.1f} percentage points to win probability"
+            ),
+            'Pythagorean Expectation': (
+                f"Scoring efficiency metrics ({value*100:.1f}% expected win rate) indicate "
+                f"dominant offensive/defensive balance, contributing {contribution*100:.1f}pp"
+            ),
+            'Point Spread': (
+                f"Betting markets heavily favor {team} ({value:+.1f} spread), "
+                f"reflecting professional oddsmaker confidence worth {contribution*100:.1f}pp"
+            ),
+            'Home Field Advantage': (
+                f"Playing at home provides significant edge with crowd support and familiarity, "
+                f"historically worth ~6% win probability boost ({contribution*100:.1f}pp here)"
+            ),
+            'Recent Form': (
+                f"Strong recent performance trajectory (form score: {value:+.2f}) shows "
+                f"momentum and improvement, adding {contribution*100:.1f}pp confidence"
+            ),
+            'Rest Advantage': (
+                f"Extra rest days ({value}) provide recovery and preparation advantage, "
+                f"contributing {contribution*100:.1f}pp to win probability"
+            )
+        }
+        
+        return explanations.get(feature, contrib['description'])
+    
+    def _explain_feature_concern(self, contrib: Dict, team: str, opponent: str) -> str:
+        """Explain why a negative feature is a concern."""
+        feature = contrib['feature']
+        value = contrib.get('value', 0)
+        contribution = abs(contrib['contribution'])
+        
+        explanations = {
+            'Elo Rating': (
+                f"Lower team strength rating ({value:.0f}) indicates quality disadvantage, "
+                f"reducing win probability by ~{contribution*100:.1f} percentage points"
+            ),
+            'Pythagorean Expectation': (
+                f"Scoring efficiency below opponent ({value*100:.1f}% expected rate) reveals "
+                f"structural weaknesses, costing {contribution*100:.1f}pp"
+            ),
+            'Point Spread': (
+                f"Betting markets favor {opponent} ({value:+.1f} spread against), "
+                f"reflecting market concern worth -{contribution*100:.1f}pp"
+            ),
+            'Recent Form': (
+                f"Poor recent performance (form score: {value:+.2f}) suggests declining "
+                f"momentum and potential issues, reducing confidence by {contribution*100:.1f}pp"
+            ),
+            'Rest Advantage': (
+                f"Rest disadvantage ({value} days) means less recovery time, "
+                f"reducing win probability by {contribution*100:.1f}pp"
+            )
+        }
+        
+        return explanations.get(feature, contrib['description'])
+    
+    def _build_betting_context(
+        self,
+        team: str,
+        opponent: str,
+        spread: Optional[float],
+        moneyline: Optional[int],
+        win_probability: float
+    ) -> str:
+        """Build comprehensive betting market context."""
+        context_parts = []
+        
+        if spread is not None:
+            # Spread context with interpretation
+            if spread < -10:
+                context_parts.append(
+                    f"Vegas has {team} as a dominant favorite ({spread:.1f} spread), "
+                    f"expecting a decisive victory by double-digits"
+                )
+            elif spread < -7:
+                context_parts.append(
+                    f"Vegas has {team} as a heavy favorite ({spread:.1f} spread), "
+                    f"projected to win by more than a touchdown"
+                )
+            elif spread < -3.5:
+                context_parts.append(
+                    f"Vegas favors {team} ({spread:.1f} spread) to win by roughly a field goal or more"
+                )
+            elif spread < -1:
+                context_parts.append(
+                    f"Vegas slightly favors {team} ({spread:.1f} spread) in what's expected to be close"
+                )
+            elif spread < 1:
+                context_parts.append(
+                    f"Vegas sees this as a toss-up (pick'em), indicating an evenly matched game"
+                )
+            elif spread < 3.5:
+                context_parts.append(
+                    f"Vegas slightly favors {opponent} ({-spread:.1f} spread), making {team} a small underdog"
+                )
+            else:
+                context_parts.append(
+                    f"Vegas favors {opponent} ({-spread:.1f} spread), positioning {team} as the underdog"
+                )
+        
+        # Add moneyline context
+        if moneyline is not None:
+            ml_text = f"Moneyline: {moneyline:+d}"
+            if moneyline < -300:
+                ml_text += " (heavy favorite, low payout)"
+            elif moneyline < -150:
+                ml_text += " (solid favorite)"
+            elif moneyline < -110:
+                ml_text += " (slight favorite)"
+            elif moneyline < 110:
+                ml_text += " (pick'em)"
+            elif moneyline < 200:
+                ml_text += " (underdog value)"
+            else:
+                ml_text += " (significant underdog)"
+            
+            if context_parts:
+                context_parts.append(f". {ml_text}")
+            else:
+                context_parts.append(ml_text)
+        
+        # Add implied probability comparison
+        if spread is not None:
+            market_prob = 0.5 + (spread * -0.033)
+            market_prob = max(0.1, min(0.9, market_prob))
+            our_prob = win_probability
+            
+            if abs(our_prob - market_prob) > 0.10:
+                diff_text = f"{abs(our_prob - market_prob)*100:.1f}%"
+                if our_prob > market_prob:
+                    context_parts.append(
+                        f". Our model sees {diff_text} more value than markets are pricing, "
+                        f"suggesting potential market inefficiency"
+                    )
+                else:
+                    context_parts.append(
+                        f". Markets are {diff_text} more optimistic than our models, "
+                        f"warranting additional caution"
+                    )
+        
+        return "".join(context_parts) if context_parts else ""
+    
+    def _build_comprehensive_recommendation(
+        self,
+        team: str,
+        opponent: str,
+        week: int,
+        win_probability: float,
+        confidence: Dict,
+        risk_assessment: Dict,
+        strengths: List[str],
+        concerns: List[str]
+    ) -> str:
+        """Build comprehensive recommendation with detailed reasoning."""
+        win_pct = win_probability * 100
+        
+        if win_probability >= 0.75 and confidence['score'] > 0.5:
+            rec = (
+                f"STRONG PICK: High confidence in {team} winning ({win_pct:.1f}% probability). "
+                f"Multiple factors strongly favor this outcome, making it an excellent survivor pool "
+                f"selection for Week {week}. "
+            )
+            if len(strengths) >= 3:
+                rec += f"With {len(strengths)} significant advantages identified, this pick offers "
+                rec += "both safety and reliability. "
+            if risk_assessment['level'] == 'Low':
+                rec += "Risk profile is minimal, suitable for conservative strategies."
+            
+        elif win_probability >= 0.65 and confidence['score'] > 0.35:
+            rec = (
+                f"GOOD PICK: Solid choice with {team} having clear advantages ({win_pct:.1f}% win probability). "
+                f"Recommended for survivor pools with {confidence['level'].lower()} confidence. "
+            )
+            if len(concerns) > 0:
+                rec += f"While there are {len(concerns)} concern(s) to monitor, the overall "
+                rec += "profile remains favorable. "
+            rec += "Represents a balanced risk/reward selection."
+            
+        elif win_probability >= 0.55:
+            rec = (
+                f"MODERATE PICK: {team} has an edge ({win_pct:.1f}% probability) but not overwhelming. "
+            )
+            if risk_assessment['level'] in ['Elevated', 'High']:
+                rec += f"With {risk_assessment['level'].lower()} risk level, this pick requires careful "
+                rec += "consideration of your pool strategy and remaining alternatives. "
+            else:
+                rec += "Consider your pool position, remaining teams, and alternative options. "
+            
+            if len(strengths) > len(concerns):
+                rec += f"The {len(strengths)} identified strengths outweigh {len(concerns)} concerns, "
+                rec += "but margin of safety is tighter."
+                
+        else:
+            rec = (
+                f"RISKY PICK: Low confidence in this selection ({win_pct:.1f}% probability). "
+            )
+            if win_probability < 0.50:
+                rec += f"{team} is actually projected as the underdog against {opponent}. "
+            
+            rec += (
+                f"With {confidence['level'].lower()} confidence and {risk_assessment['level'].lower()} risk, "
+                f"only use if absolutely necessary due to previous picks, or as a deliberate "
+                f"contrarian play in large pools where differentiation is crucial."
+            )
+        
+        return rec
     
     def _identify_key_factors(
         self,
