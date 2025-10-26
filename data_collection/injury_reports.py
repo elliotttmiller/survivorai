@@ -258,19 +258,19 @@ class CBSSportsInjuryScraper:
 class InjuryReportCollector:
     """ENHANCED: Collects and processes NFL injury reports from multiple web sources."""
     
-    def __init__(self, cache_dir: str = 'cache', cache_expiry_hours: int = 4, use_fallback: bool = True):
+    def __init__(self, cache_dir: str = 'cache', cache_expiry_hours: int = 4, use_fallback: bool = False):
         """
         Initialize injury report collector with web scraping capabilities.
         
         Args:
             cache_dir: Directory for caching injury data
             cache_expiry_hours: Hours before cache expires (default 4)
-            use_fallback: Whether to use fallback mock data when scraping fails (default True)
+            use_fallback: Whether to use fallback mock data when scraping fails (default False, DEPRECATED)
         """
         self.cache_dir = cache_dir
         self.cache_expiry_hours = cache_expiry_hours
         self.cache_file = os.path.join(cache_dir, 'injury_reports.json')
-        self.use_fallback = use_fallback
+        self.use_fallback = False  # Always disabled - no fallback data
         
         # Initialize scrapers (ESPN and CBS Sports only)
         self.espn_scraper = ESPNInjuryScraper()
@@ -289,6 +289,7 @@ class InjuryReportCollector:
         
         Returns:
             List of injury dictionaries with player info, position, status, impact
+            Empty list if data is unavailable
         """
         # Try to load from cache first
         cached_data = self._load_from_cache()
@@ -299,11 +300,8 @@ class InjuryReportCollector:
         # If not in cache or cache expired, fetch fresh data from all sources
         injuries = self._fetch_injury_data(team, week)
         
-        # If scraping failed and fallback is enabled, use fallback data
-        if not injuries and self.use_fallback:
-            injuries = self._get_fallback_injury_data(team)
-        
-        # Cache the results
+        # No fallback - return empty list if scraping fails
+        # Cache the results (even if empty)
         self._save_to_cache(team, injuries)
         
         return injuries
@@ -797,24 +795,19 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
         Dictionary with injury summary information
     """
     try:
-        collector = InjuryReportCollector(use_fallback=True)  # Enable fallback data
+        collector = InjuryReportCollector(use_fallback=False)  # No fallback data
         analyzer = InjuryImpactAnalyzer()
         
         injuries = collector.get_team_injuries(team, week)
-        
-        # Check if using fallback data
-        using_fallback = False
-        if injuries and injuries[0].get('source') == 'Fallback (Estimated)':
-            using_fallback = True
         
         if not injuries:
             return {
                 'has_injuries': False,
                 'impact_score': 0.0,
-                'impact_level': 'None',
-                'summary': 'No significant injuries reported',
+                'impact_level': 'Unknown',
+                'summary': 'Injury data unavailable',
                 'details': [],
-                'using_fallback': False
+                'data_unavailable': True
             }
         
         # Calculate impact
@@ -863,7 +856,7 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
             'details': details,
             'total_injuries': len(injuries),
             'critical_count': len(critical_injuries),
-            'using_fallback': using_fallback
+            'data_unavailable': False
         }
     
     
@@ -875,7 +868,8 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
             'impact_score': 0.0,
             'impact_level': 'Unknown',
             'summary': 'Injury data unavailable',
-            'details': []
+            'details': [],
+            'data_unavailable': True
         }
 
 
