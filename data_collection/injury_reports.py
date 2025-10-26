@@ -871,6 +871,7 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
         for inj in critical_injuries:
             detail = {
                 'player': inj['player_name'],
+                'team': inj.get('team', team),  # Include team name
                 'position': inj['position'],
                 'status': inj['status'],
                 'injury_type': inj.get('injury_type', 'UNKNOWN'),
