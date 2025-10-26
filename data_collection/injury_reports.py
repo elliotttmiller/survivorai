@@ -258,19 +258,19 @@ class CBSSportsInjuryScraper:
 class InjuryReportCollector:
     """ENHANCED: Collects and processes NFL injury reports from multiple web sources."""
     
-    def __init__(self, cache_dir: str = 'cache', cache_expiry_hours: int = 4, use_fallback: bool = True):
+    def __init__(self, cache_dir: str = 'cache', cache_expiry_hours: int = 4, use_fallback: bool = False):
         """
         Initialize injury report collector with web scraping capabilities.
         
         Args:
             cache_dir: Directory for caching injury data
             cache_expiry_hours: Hours before cache expires (default 4)
-            use_fallback: Whether to use fallback mock data when scraping fails (default True)
+            use_fallback: Whether to use fallback mock data when scraping fails (default False, DEPRECATED)
         """
         self.cache_dir = cache_dir
         self.cache_expiry_hours = cache_expiry_hours
         self.cache_file = os.path.join(cache_dir, 'injury_reports.json')
-        self.use_fallback = use_fallback
+        self.use_fallback = False  # Always disabled - no fallback data
         
         # Initialize scrapers (ESPN and CBS Sports only)
         self.espn_scraper = ESPNInjuryScraper()
@@ -289,6 +289,7 @@ class InjuryReportCollector:
         
         Returns:
             List of injury dictionaries with player info, position, status, impact
+            Empty list if data is unavailable
         """
         # Try to load from cache first
         cached_data = self._load_from_cache()
@@ -299,11 +300,8 @@ class InjuryReportCollector:
         # If not in cache or cache expired, fetch fresh data from all sources
         injuries = self._fetch_injury_data(team, week)
         
-        # If scraping failed and fallback is enabled, use fallback data
-        if not injuries and self.use_fallback:
-            injuries = self._get_fallback_injury_data(team)
-        
-        # Cache the results
+        # No fallback - return empty list if scraping fails
+        # Cache the results (even if empty)
         self._save_to_cache(team, injuries)
         
         return injuries
@@ -521,56 +519,23 @@ class InjuryReportCollector:
         num_injuries = random.randint(1, 3)
         injuries = []
         
-        # Realistic player names by position for fallback data
-        player_names_by_position = {
-            'QB': ['J. Allen', 'P. Mahomes', 'J. Burrow', 'J. Herbert', 'D. Prescott', 'J. Hurts'],
-            'RB': ['C. McCaffrey', 'D. Henry', 'J. Taylor', 'N. Harris', 'A. Ekeler', 'S. Barkley'],
-            'WR': ['T. Hill', 'S. Diggs', 'J. Jefferson', 'C. Kupp', 'D. Adams', 'A.J. Brown'],
-            'TE': ['T. Kelce', 'M. Andrews', 'G. Kittle', 'D. Goedert', 'E. Engram', 'D. Schultz'],
-            'OT': ['T. Wirfs', 'L. Johnson', 'P. Sewell', 'C. Williams', 'A. Dillard', 'R. Ramczyk'],
-            'OG': ['Q. Nelson', 'Z. Martin', 'J. Thuney', 'W. Hernandez', 'C. Lindstrom', 'L. Davis'],
-            'C': ['J. Kelce', 'F. Ragnow', 'C. Williams', 'T. Biadasz', 'L. Dickerson', 'R. Kelly'],
-            'DE': ['M. Garrett', 'N. Bosa', 'T. Watt', 'M. Crosby', 'J. Bosa', 'C. Jones'],
-            'DT': ['A. Donald', 'C. Heyward', 'D. Lawrence', 'Q. Williams', 'J. Allen', 'D. Payne'],
-            'LB': ['M. Parsons', 'R. Smith', 'F. Warner', 'D. Leonard', 'B. Wagner', 'L. David'],
-            'CB': ['J. Ramsey', 'P. Surtain', 'D. Ward', 'M. Lattimore', 'T. Diggs', 'J. Bradberry'],
-            'S': ['M. Fitzpatrick', 'D. James', 'T. Diggs', 'J. Bates', 'K. Byard', 'A. Winfield'],
-            'K': ['J. Tucker', 'H. Butker', 'D. Hopkins', 'M. Prater', 'R. Gould', 'E. McPherson'],
-        }
-        
-        # Common injury scenarios with realistic descriptions
+        # Common injury scenarios
         injury_scenarios = [
-            {'position': 'WR', 'status': 'QUESTIONABLE', 'injury_type': 'Ankle', 'impact': 'Moderate'},
-            {'position': 'RB', 'status': 'DOUBTFUL', 'injury_type': 'Hamstring', 'impact': 'High'},
-            {'position': 'LB', 'status': 'OUT', 'injury_type': 'Concussion', 'impact': 'Moderate'},
-            {'position': 'CB', 'status': 'QUESTIONABLE', 'injury_type': 'Groin', 'impact': 'Low'},
-            {'position': 'OT', 'status': 'OUT', 'injury_type': 'Knee', 'impact': 'High'},
-            {'position': 'TE', 'status': 'QUESTIONABLE', 'injury_type': 'Shoulder', 'impact': 'Moderate'},
-            {'position': 'DE', 'status': 'DOUBTFUL', 'injury_type': 'Ankle', 'impact': 'Moderate'},
-            {'position': 'S', 'status': 'QUESTIONABLE', 'injury_type': 'Back', 'impact': 'Low'},
-            {'position': 'QB', 'status': 'QUESTIONABLE', 'injury_type': 'Shoulder', 'impact': 'High'},
-            {'position': 'DT', 'status': 'OUT', 'injury_type': 'Knee', 'impact': 'Moderate'},
+            {'position': 'WR', 'status': 'QUESTIONABLE', 'injury_type': 'ANKLE', 'impact': 'Moderate'},
+            {'position': 'RB', 'status': 'DOUBTFUL', 'injury_type': 'HAMSTRING', 'impact': 'High'},
+            {'position': 'LB', 'status': 'OUT', 'injury_type': 'CONCUSSION', 'impact': 'Moderate'},
+            {'position': 'CB', 'status': 'QUESTIONABLE', 'injury_type': 'GROIN', 'impact': 'Low'},
+            {'position': 'OT', 'status': 'OUT', 'injury_type': 'KNEE', 'impact': 'High'},
+            {'position': 'TE', 'status': 'QUESTIONABLE', 'injury_type': 'SHOULDER', 'impact': 'Moderate'},
+            {'position': 'DE', 'status': 'DOUBTFUL', 'injury_type': 'ANKLE', 'impact': 'Moderate'},
+            {'position': 'S', 'status': 'QUESTIONABLE', 'injury_type': 'BACK', 'impact': 'Low'},
         ]
         
-        used_positions = []
         for i in range(num_injuries):
             scenario = random.choice(injury_scenarios)
-            position = scenario['position']
-            
-            # Avoid duplicate positions in the same team's injury report
-            while position in used_positions and len(used_positions) < len(injury_scenarios):
-                scenario = random.choice(injury_scenarios)
-                position = scenario['position']
-            
-            used_positions.append(position)
-            
-            # Get a realistic player name for this position
-            player_pool = player_names_by_position.get(position, [f'Player {i+1}'])
-            player_name = random.choice(player_pool)
-            
             injury = {
                 'team': team,
-                'player_name': player_name,
+                'player_name': f"Player {i+1}",
                 'position': scenario['position'],
                 'status': scenario['status'],
                 'injury_type': scenario['injury_type'],
@@ -830,24 +795,19 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
         Dictionary with injury summary information
     """
     try:
-        collector = InjuryReportCollector(use_fallback=True)  # Enable fallback data
+        collector = InjuryReportCollector(use_fallback=False)  # No fallback data
         analyzer = InjuryImpactAnalyzer()
         
         injuries = collector.get_team_injuries(team, week)
-        
-        # Check if using fallback data
-        using_fallback = False
-        if injuries and injuries[0].get('source') == 'Fallback (Estimated)':
-            using_fallback = True
         
         if not injuries:
             return {
                 'has_injuries': False,
                 'impact_score': 0.0,
-                'impact_level': 'None',
-                'summary': 'No significant injuries reported',
+                'impact_level': 'Unknown',
+                'summary': 'Injury data unavailable',
                 'details': [],
-                'using_fallback': False
+                'data_unavailable': True
             }
         
         # Calculate impact
@@ -871,7 +831,6 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
         for inj in critical_injuries:
             detail = {
                 'player': inj['player_name'],
-                'team': inj.get('team', team),  # Include team name
                 'position': inj['position'],
                 'status': inj['status'],
                 'injury_type': inj.get('injury_type', 'UNKNOWN'),
@@ -897,7 +856,7 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
             'details': details,
             'total_injuries': len(injuries),
             'critical_count': len(critical_injuries),
-            'using_fallback': using_fallback
+            'data_unavailable': False
         }
     
     
@@ -909,7 +868,8 @@ def get_injury_summary_for_team(team: str, week: Optional[int] = None) -> Dict:
             'impact_score': 0.0,
             'impact_level': 'Unknown',
             'summary': 'Injury data unavailable',
-            'details': []
+            'details': [],
+            'data_unavailable': True
         }
 
 

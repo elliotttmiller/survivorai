@@ -855,7 +855,10 @@ def main():
                             # Get injury information for this team
                             team_injury_summary = get_injury_summary_for_team(pick['recommended_team'], current_week)
                             
-                            if team_injury_summary['has_injuries'] and team_injury_summary['impact_score'] > 0.05:
+                            # Check if data is unavailable
+                            if team_injury_summary.get('data_unavailable', False):
+                                st.info("ℹ️ **Injury data unavailable:** Unable to retrieve injury information for this team at this time.")
+                            elif team_injury_summary['has_injuries'] and team_injury_summary['impact_score'] > 0.05:
                                 # Show injury warning based on impact level
                                 impact_level = team_injury_summary['impact_level']
                                 impact_score = team_injury_summary['impact_score']
@@ -873,10 +876,7 @@ def main():
                                 if team_injury_summary['details']:
                                     with st.expander(f"📋 Detailed Injury Report ({team_injury_summary['critical_count']} key injuries)"):
                                         for detail in team_injury_summary['details']:
-                                            # Display player name with team
-                                            st.markdown(f"**{detail['player']}** — {detail['team']}")
-                                            st.markdown(f"  • Position: {detail['position']}")
-                                            st.markdown(f"  • Status: *{detail['status']}*")
+                                            st.markdown(f"**{detail['player']}** ({detail['position']}) — *{detail['status']}*")
                                             st.markdown(f"  • Injury: {detail['injury_type']}")
                                             st.markdown(f"  • Impact Score: {detail['impact']:.3f}")
                                             
@@ -885,10 +885,6 @@ def main():
                                                 st.markdown(f"  • **Analysis:** {detail['analysis'][:300]}...")
                                             
                                             st.markdown("")
-                                        
-                                        # Show note if using estimated data
-                                        if team_injury_summary.get('using_fallback', False):
-                                            st.caption("ℹ️ Using estimated injury data. Real-time data temporarily unavailable.")
                                 
                                 # Show how injuries affect the prediction
                                 st.caption(f"**Impact on Prediction:** Injuries reduce this team's effective strength by approximately {impact_score*100:.1f}%. This is factored into the win probability and recommendation scores above.")
@@ -896,7 +892,7 @@ def main():
                                 st.success("✅ **No Significant Injuries:** This team has a clean injury report with no major concerns.")
                         
                         except Exception as e:
-                            st.info("ℹ️ Injury data temporarily unavailable")
+                            st.info("ℹ️ **Injury data unavailable:** Unable to retrieve injury information at this time.")
                         
                         st.markdown("---")
                         
