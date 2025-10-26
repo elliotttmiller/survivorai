@@ -7,24 +7,30 @@ when real data is available from ESPN or CBS Sports scrapers.
 
 import sys
 import os
+from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data_collection.injury_reports import InjuryImpactAnalyzer
 
+# Constants
+SEPARATOR_FULL = "=" * 70
+SEPARATOR_SECTION = "-" * 70
+SAMPLE_TIMESTAMP = datetime.now().isoformat()
+
 
 def demonstrate_injury_display():
     """Show expected injury display format with real data."""
     
-    print("="*70)
+    print(SEPARATOR_FULL)
     print("COMPREHENSIVE INJURY IMPACT ANALYSIS - EXPECTED OUTPUT")
-    print("="*70)
+    print(SEPARATOR_FULL)
     print()
     
     # Example 1: Single QB injury (high impact)
     print("Example 1: High Impact Injury")
-    print("-" * 70)
+    print(SEPARATOR_SECTION)
     
     analyzer = InjuryImpactAnalyzer()
     
@@ -36,7 +42,7 @@ def demonstrate_injury_display():
             'status': 'OUT',
             'injury_type': 'ANKLE',
             'source': 'ESPN',
-            'date_reported': '2024-10-26T10:00:00',
+            'date_reported': SAMPLE_TIMESTAMP,
         }
     ]
     
@@ -65,7 +71,7 @@ def demonstrate_injury_display():
     
     # Example 2: Multiple injuries
     print("Example 2: Multiple Injuries from Same Team")
-    print("-" * 70)
+    print(SEPARATOR_SECTION)
     
     injuries_ex2 = [
         {
@@ -75,7 +81,7 @@ def demonstrate_injury_display():
             'status': 'OUT',
             'injury_type': 'ACHILLES',
             'source': 'CBS Sports',
-            'date_reported': '2024-10-26T10:00:00',
+            'date_reported': SAMPLE_TIMESTAMP,
         },
         {
             'player_name': 'Nick Bosa',
@@ -84,7 +90,7 @@ def demonstrate_injury_display():
             'status': 'QUESTIONABLE',
             'injury_type': 'HIP',
             'source': 'ESPN',
-            'date_reported': '2024-10-26T10:00:00',
+            'date_reported': SAMPLE_TIMESTAMP,
         },
         {
             'player_name': 'Trent Williams',
@@ -93,7 +99,7 @@ def demonstrate_injury_display():
             'status': 'OUT',
             'injury_type': 'ANKLE',
             'source': 'ESPN',
-            'date_reported': '2024-10-26T10:00:00',
+            'date_reported': SAMPLE_TIMESTAMP,
         }
     ]
     
@@ -122,20 +128,20 @@ def demonstrate_injury_display():
     print()
     
     # Example 3: Comparison of old vs new format
-    print("="*70)
+    print(SEPARATOR_FULL)
     print("COMPARISON: OLD vs NEW FORMAT")
-    print("="*70)
+    print(SEPARATOR_FULL)
     print()
     
     print("❌ OLD FORMAT (Generic Placeholder Data):")
-    print("-" * 70)
+    print(SEPARATOR_SECTION)
     print("Player 2 (OT) — OUT")
     print("  • Injury: KNEE")
     print("  • Impact Score: 0.400")
     print()
     
     print("✅ NEW FORMAT (Comprehensive Real Data):")
-    print("-" * 70)
+    print(SEPARATOR_SECTION)
     print("**Trent Williams** (LT) — *OUT*")
     print("  • Team: San Francisco 49ers")
     print("  • Injury: ANKLE")
@@ -143,9 +149,9 @@ def demonstrate_injury_display():
     print("  • Source: ESPN")
     print()
     
-    print("="*70)
+    print(SEPARATOR_FULL)
     print("KEY IMPROVEMENTS:")
-    print("="*70)
+    print(SEPARATOR_FULL)
     print("✅ Real player names (not 'Player 1', 'Player 2')")
     print("✅ Specific team identification")
     print("✅ Real injury types from medical reports")
@@ -156,3 +162,4 @@ def demonstrate_injury_display():
 
 if __name__ == '__main__':
     demonstrate_injury_display()
+
