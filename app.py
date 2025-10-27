@@ -876,9 +876,15 @@ def main():
                                 if team_injury_summary['details']:
                                     with st.expander(f"📋 Detailed Injury Report ({team_injury_summary['critical_count']} key injuries)"):
                                         for detail in team_injury_summary['details']:
+                                            # Show player name with team
                                             st.markdown(f"**{detail['player']}** ({detail['position']}) — *{detail['status']}*")
+                                            st.markdown(f"  • Team: {detail.get('team', 'Unknown')}")
                                             st.markdown(f"  • Injury: {detail['injury_type']}")
                                             st.markdown(f"  • Impact Score: {detail['impact']:.3f}")
+                                            
+                                            # Show data source if available
+                                            if detail.get('source'):
+                                                st.markdown(f"  • Source: {detail['source']}")
                                             
                                             # Show analysis if available
                                             if detail.get('analysis'):
